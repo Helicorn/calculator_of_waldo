@@ -1,14 +1,14 @@
-# [프로젝트 이름]
+# [왈도의 계산기]
 
-> 한 줄 소개: 이 프로젝트가 어떤 문제를 해결하는지 간단히 작성
+> 한 줄 소개: 취미 겸 바이브코딩으로 어디까지 내가 만들수 있나 작성
 
 ## 프로젝트 개요
 
-- **목적**: 
+- **목적**: 개인 취미 및 취업시 참고용
 - **기간**: 
-- **인원**: 
-- **내 역할**: 
-- **배포 URL**: 
+- **인원**: 1인
+- **내 역할**: AI에게 명령하기(실제 코드 작성: cursor, 방향 제시 상담: ChatGPT)
+- **배포 URL**: https://github.com/Helicorn/calculator_of_waldo
 - **시연 영상/문서**: 
 
 ## 핵심 기능
@@ -69,8 +69,8 @@
 
 #### 사전 요구 사항
 
-- Java: 
-- DB: 
+- Java: **JDK 21** (`java -version` 확인). 빌드/테스트는 `backend/mvnw` 사용.
+- DB: 기본 프로필은 `dev` + `local`이며, `application-local.yml`이 있으면 그 안의 DB 설정이 적용됩니다. **Oracle 없이** 띄우려면 `SPRING_PROFILES_ACTIVE=dev`(H2). **Oracle**을 쓰려면 인스턴스 준비 후 `oracle` 프로필과 `application-oracle.yml` 등 접속 설정을 맞추세요.
 
 #### 환경 변수 (`backend/src/main/resources/application-*.yml` 또는 환경 변수)
 
