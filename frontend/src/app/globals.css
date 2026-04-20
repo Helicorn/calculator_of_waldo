@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* 포켓몬 이름 콤보 입력: 브라우저 기본 캘린더 아이콘 숨김 (도감·피해량 계산 공통) */
+.pokemon-pokedex-input::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  display: none !important;
+  -webkit-appearance: none !important;
+  pointer-events: none !important;
+}

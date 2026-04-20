@@ -1,0 +1,1 @@
+export const lolDbUrl = "https://ddragon.leagueoflegends.com/cdn/";

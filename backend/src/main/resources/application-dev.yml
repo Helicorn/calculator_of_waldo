@@ -1,0 +1,17 @@
+# dev 프로필 단독(SPRING_PROFILES_ACTIVE=dev) 또는 application-local.yml 없을 때: 인메모리 H2
+# H2에는 스키마 C##DB1 이 없으므로 default_schema 는 PUBLIC 유지.
+# application-local.yml 이 있으면 같은 기본 실행에서 Oracle 설정이 이 블록을 덮어씁니다.
+spring:
+  datasource:
+    url: jdbc:h2:mem:devdb;MODE=Oracle;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: PUBLIC

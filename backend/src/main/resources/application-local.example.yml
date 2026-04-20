@@ -1,0 +1,16 @@
+# 이 파일을 복사해 application-local.yml 로 저장한 뒤 비밀번호·URL 을 수정하세요.
+# application-local.yml 은 .gitignore 되어 커밋되지 않습니다.
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521:XE
+    username: "C##DB1"
+    password: "CHANGE_ME"
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: "C##DB1"

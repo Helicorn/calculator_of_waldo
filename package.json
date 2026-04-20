@@ -1,0 +1,9 @@
+{
+  "name": "cursor-project",
+  "private": true,
+  "scripts": {
+    "server": "node scripts/run-server.cjs",
+    "run-server": "node scripts/run-server.cjs",
+    "server:8081": "node scripts/run-server.cjs 8081"
+  }
+}

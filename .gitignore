@@ -1,0 +1,20 @@
+# Build artifacts
+program/dist/
+program/package/
+program/package*/
+program/installer/
+program/package-input/
+program/**/*.class
+
+# Runtime logs
+logs/
+program/logs/
+
+# Node artifacts
+frontend/node_modules/
+backend/node_modules/
+node_modules/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db

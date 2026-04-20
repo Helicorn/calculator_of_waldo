@@ -1,0 +1,8 @@
+# 기본: dev + local 순으로 활성화. application-local.yml 이 있으면 그 안의 Oracle 설정이 dev(H2)를 덮어씁니다.
+# Oracle 없이 H2만: SPRING_PROFILES_ACTIVE=dev
+# 운영/CI Oracle: SPRING_PROFILES_ACTIVE=oracle (+ 환경 변수)
+spring:
+  profiles:
+    default:
+      - dev
+      - local

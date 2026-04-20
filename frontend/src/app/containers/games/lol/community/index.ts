@@ -1,0 +1,1 @@
+export { LolCommunityPage } from "./LolCommunityPage";
