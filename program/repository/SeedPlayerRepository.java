@@ -32,6 +32,7 @@ public class SeedPlayerRepository {
         String dbUrl = readEnvOrDefault("LOL_DB_URL", DEFAULT_DB_URL);
         String dbUser = readEnvOrDefault("LOL_DB_USER", DEFAULT_DB_USER);
         String dbPassword = DEFAULT_DB_PASSWORD;
+        Class.forName("oracle.jdbc.OracleDriver");
 
         int affectedRows = 0;
         try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);

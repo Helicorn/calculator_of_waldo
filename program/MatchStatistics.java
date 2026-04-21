@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
@@ -32,14 +34,24 @@ import javax.swing.SwingUtilities;
 import program.repository.MatchRepository;
 import program.repository.SeedPlayerRepository;
 
+/**
+ * 특정 버전 및 특정 티어의 매치 전적을 조회하고, 조회한 매치 전적을 데이터베이스에 저장하는 프로그램(솔로랭크, 에메랄드 1)
+ * 원래 배치를 이용하여 매치 전적을 저장하려 했으나, 개인 취미 프로젝트 특성상 배치 이용이 부적합하여 수동으로 저장하는 방식으로 구현
+ */
+
 public class MatchStatistics extends JFrame {
     private static final DateTimeFormatter FILE_TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private static final Pattern JSON_STRING_PATTERN_TEMPLATE =
         Pattern.compile("\"%s\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-    private static final String LEAGUE_EXP_URL =
+    /** {@code page}는 1부터 증가시키며, 빈 배열 응답이 나올 때까지 모두 조회한다. */
+    private static final String LEAGUE_EXP_URL_TEMPLATE =
         "https://kr.api.riotgames.com/lol/league-exp/v4/entries/"
-            + "RANKED_SOLO_5x5/EMERALD/I?page=1";
+            + "RANKED_SOLO_5x5/EMERALD/I?page=%d";
+    /** Riot 한 페이지당 항목 수보다 넉넉한 상한(비정상 응답 시 무한 루프 방지). */
+    private static final int LEAGUE_EXP_MAX_PAGES = 1000;
+    private static final int LEAGUE_EXP_MAX_RETRIES_PER_PAGE = 8;
+    private static final long LEAGUE_EXP_DEFAULT_RETRY_WAIT_MS = 2000L;
     private static final String MATCH_IDS_URL_TEMPLATE =
         "https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/%s/ids?start=0&count=%d";
     private static final String MATCH_DETAIL_URL_TEMPLATE =
@@ -51,6 +63,8 @@ public class MatchStatistics extends JFrame {
     private final JButton requestButton = new JButton("league-exp-v4 호출");
     private final SeedPlayerRepository seedPlayerRepository = new SeedPlayerRepository();
     private final MatchRepository matchRepository = new MatchRepository();
+    private final AtomicLong lastProgressAtMs = new AtomicLong();
+    private final AtomicBoolean requestRunning = new AtomicBoolean(false);
 
     public MatchStatistics() {
         setTitle("Match Statistics");
@@ -87,41 +101,158 @@ public class MatchStatistics extends JFrame {
         }
 
         requestButton.setEnabled(false);
-        responseArea.setText("요청 중...");
+        responseArea.setText("");
+        requestRunning.set(true);
+        lastProgressAtMs.set(System.currentTimeMillis());
+        appendProgress("요청 시작");
+        Thread heartbeatThread = startHeartbeatThread();
 
         Thread requestThread = new Thread(() -> {
             String result;
             try {
+                appendProgress("league-exp 전체 페이지 조회 시작");
                 ApiResponse response = callLeagueExp(apiKey);
+                appendProgress("league-exp 조회 완료 (HTTP " + response.statusCode + ")");
                 Path savedPath = saveResponseToLogs(response);
+                appendProgress("응답 로그 저장 완료: " + savedPath.toString());
                 SeedSaveBundle seedSave = saveSeedPlayersToOracle(response);
+                appendProgress("시드 저장 결과: " + seedSave.dbResult.message);
                 MatchRepository.MatchSaveSummary matchSummary =
                     fetchAndSaveMatchesByPuuid(apiKey, seedSave.seedRows);
+                appendProgress("매치 저장 결과: " + matchSummary.message);
                 result = "저장 파일: " + savedPath.toString() + "\n\n"
                     + "DB 저장(시드): " + seedSave.dbResult.message + "\n"
                     + "DB 저장(매치): " + matchSummary.message + "\n\n"
-                    + "HTTP " + response.statusCode + "\n\n" + response.body;
+                    + "HTTP " + response.statusCode + "\n\n"
+                    + "(JSON 본문은 GUI에 표시하지 않습니다. 저장 파일을 확인하세요.)";
             } catch (Exception ex) {
                 result = "호출 실패: " + ex.getMessage();
+                appendProgress("오류: " + ex.getMessage());
             }
 
             String finalResult = result;
+            requestRunning.set(false);
+            heartbeatThread.interrupt();
             SwingUtilities.invokeLater(() -> {
-                responseArea.setText(finalResult);
+                responseArea.append("\n=== 최종 결과 ===\n");
+                responseArea.append(finalResult);
                 requestButton.setEnabled(true);
             });
         });
         requestThread.start();
     }
 
+    /**
+     * league-exp-v4를 page=1부터 순회해, 빈 페이지가 나올 때까지 전부 받아 하나의 JSON 배열로 합친다.
+     */
     private ApiResponse callLeagueExp(String apiKey) throws Exception {
+        List<String> allObjectJson = new ArrayList<>();
+        String lastContentType = "application/json";
+        int lastStatus = 200;
+
+        for (int page = 1; ; page++) {
+            if (page > LEAGUE_EXP_MAX_PAGES) {
+                throw new IOException(
+                    "league-exp-v4 페이지 상한(" + LEAGUE_EXP_MAX_PAGES + ")에 도달했습니다. "
+                        + "마지막 응답에 아직 항목이 있어 중단했습니다."
+                );
+            }
+
+            if (page > 1) {
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("league-exp 페이지 조회가 중단되었습니다.", ie);
+                }
+            }
+
+            String url = String.format(LEAGUE_EXP_URL_TEMPLATE, page);
+            appendProgress("league-exp page " + page + " 조회 중...");
+            ApiResponse pageResponse = callLeagueExpPageWithRetry(apiKey, url, page);
+            lastStatus = pageResponse.statusCode;
+            if (pageResponse.contentType != null && !pageResponse.contentType.isBlank()) {
+                lastContentType = pageResponse.contentType;
+            }
+
+            if (pageResponse.statusCode < 200 || pageResponse.statusCode >= 300) {
+                if (page == 1) {
+                    return pageResponse;
+                }
+                throw new IOException(
+                    "league-exp-v4 페이지 " + page + " HTTP 실패: " + pageResponse.statusCode
+                );
+            }
+
+            List<String> pageObjects = splitTopLevelObjects(pageResponse.body.trim());
+            if (pageObjects.isEmpty()) {
+                appendProgress("league-exp page " + page + " 비어 있음 -> 페이지 순회 종료");
+                break;
+            }
+            appendProgress("league-exp page " + page + " 항목 " + pageObjects.size() + "건 수집");
+            allObjectJson.addAll(pageObjects);
+        }
+
+        if (allObjectJson.isEmpty()) {
+            return new ApiResponse(lastStatus, "[]", lastContentType);
+        }
+
+        String mergedBody = "[" + String.join(",", allObjectJson) + "]";
+        return new ApiResponse(lastStatus, mergedBody, lastContentType);
+    }
+
+    private ApiResponse callLeagueExpPageWithRetry(
+        String apiKey,
+        String urlString,
+        int page
+    ) throws Exception {
+        for (int attempt = 1; attempt <= LEAGUE_EXP_MAX_RETRIES_PER_PAGE; attempt++) {
+            ApiResponse response = callLeagueExpPage(apiKey, urlString);
+            if (response.statusCode != 429) {
+                return response;
+            }
+
+            if (attempt == LEAGUE_EXP_MAX_RETRIES_PER_PAGE) {
+                return response;
+            }
+
+            long waitMs = resolveRetryWaitMs(response, attempt);
+            long waitSeconds = Math.max(1L, waitMs / 1000L);
+            appendProgress(
+                "league-exp page " + page + " 429 제한 -> " + waitSeconds + "초 대기 후 재시도 ("
+                    + attempt + "/" + LEAGUE_EXP_MAX_RETRIES_PER_PAGE + ")"
+            );
+            sleepQuietly(waitMs);
+        }
+        throw new IOException("league-exp-v4 페이지 " + page + " 재시도 로직이 비정상 종료되었습니다.");
+    }
+
+    private long resolveRetryWaitMs(ApiResponse response, int attempt) {
+        if (response.retryAfterSeconds > 0) {
+            return response.retryAfterSeconds * 1000L;
+        }
+
+        long exponential = LEAGUE_EXP_DEFAULT_RETRY_WAIT_MS * (1L << Math.min(attempt - 1, 6));
+        return Math.min(exponential, 60_000L);
+    }
+
+    private void sleepQuietly(long waitMs) throws IOException {
+        try {
+            Thread.sleep(waitMs);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IOException("league-exp 재시도 대기 중 인터럽트가 발생했습니다.", ie);
+        }
+    }
+
+    private ApiResponse callLeagueExpPage(String apiKey, String urlString) throws Exception {
         HttpURLConnection connection = null;
         try {
-            URL url = URI.create(LEAGUE_EXP_URL).toURL();
+            URL url = URI.create(urlString).toURL();
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(10000);
-            connection.setReadTimeout(15000);
+            connection.setReadTimeout(60000);
             connection.setRequestProperty("X-Riot-Token", apiKey);
 
             int statusCode = connection.getResponseCode();
@@ -131,7 +262,8 @@ public class MatchStatistics extends JFrame {
 
             String body = readFully(stream);
             String contentType = connection.getHeaderField("Content-Type");
-            return new ApiResponse(statusCode, body, contentType);
+            int retryAfterSeconds = parseRetryAfterSeconds(connection.getHeaderField("Retry-After"));
+            return new ApiResponse(statusCode, body, contentType, retryAfterSeconds);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -277,14 +409,19 @@ public class MatchStatistics extends JFrame {
         int requestedMatchCount = 0;
         int savedMatchCount = 0;
         int savedParticipantCount = 0;
+        int playerIndex = 0;
 
         for (SeedPlayerRepository.SeedPlayerRow seedRow : seedRows) {
+            playerIndex++;
+            appendProgress("매치 수집 중... 플레이어 " + playerIndex + "/" + seedRows.size());
             List<String> matchIds = callMatchIdsByPuuid(apiKey, seedRow.puuid, MATCH_COUNT_PER_PLAYER);
             requestedMatchCount += matchIds.size();
+            appendProgress("PUUID " + playerIndex + " 매치 ID " + matchIds.size() + "건");
 
             for (String matchId : matchIds) {
                 ApiResponse matchResponse = callMatchDetail(apiKey, matchId);
                 if (matchResponse.statusCode < 200 || matchResponse.statusCode >= 300) {
+                    appendProgress("매치 상세 조회 실패 (" + matchId + ", HTTP " + matchResponse.statusCode + ")");
                     continue;
                 }
 
@@ -301,7 +438,19 @@ public class MatchStatistics extends JFrame {
                 MatchRepository.MatchSaveSummary oneResult = matchRepository.saveMatch(matchRecord, participants);
                 savedMatchCount += oneResult.savedMatchCount;
                 savedParticipantCount += oneResult.savedParticipantCount;
+                appendProgress(
+                    "매치 저장 진행: MATCH " + savedMatchCount + "건, PARTICIPANT " + savedParticipantCount + "건"
+                );
             }
+        }
+
+        if (savedParticipantCount > 0) {
+            appendProgress("챔피언 통계 집계 시작 (LOL_CHAMPION_STATS)...");
+            MatchRepository.ChampionStatsRefreshResult statsResult =
+                matchRepository.refreshChampionStatsForSoloRanked();
+            appendProgress(statsResult.message);
+        } else {
+            appendProgress("저장된 PARTICIPANT가 없어 챔피언 통계 집계를 건너뜁니다.");
         }
 
         return new MatchRepository.MatchSaveSummary(
@@ -399,6 +548,7 @@ public class MatchStatistics extends JFrame {
             Integer deaths = extractJsonIntValue(participantJson, "deaths");
             Integer assists = extractJsonIntValue(participantJson, "assists");
             Boolean win = extractJsonBooleanValue(participantJson, "win");
+            String line = resolveLine(participantJson);
 
             if (isBlank(puuid) || championId == null || win == null) {
                 continue;
@@ -408,6 +558,7 @@ public class MatchStatistics extends JFrame {
                 matchId,
                 puuid,
                 championId,
+                line,
                 win ? "Y" : "N",
                 defaultZero(kills),
                 defaultZero(deaths),
@@ -420,6 +571,39 @@ public class MatchStatistics extends JFrame {
 
     private Integer defaultZero(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private String resolveLine(String participantJson) {
+        String teamPosition = normalizeLineValue(extractJsonStringValue(participantJson, "teamPosition"));
+        if (!isBlank(teamPosition)) {
+            return teamPosition;
+        }
+        String individualPosition = normalizeLineValue(
+            extractJsonStringValue(participantJson, "individualPosition")
+        );
+        if (!isBlank(individualPosition)) {
+            return individualPosition;
+        }
+        String line = normalizeLineValue(extractJsonStringValue(participantJson, "line"));
+        if (!isBlank(line)) {
+            return line;
+        }
+        String lane = normalizeLineValue(extractJsonStringValue(participantJson, "lane"));
+        return isBlank(lane) ? "UNKNOWN" : lane;
+    }
+
+    private String normalizeLineValue(String raw) {
+        if (isBlank(raw)) {
+            return "";
+        }
+        String v = raw.trim().toUpperCase();
+        if ("NONE".equals(v) || "INVALID".equals(v)) {
+            return "";
+        }
+        if ("UTILITY".equals(v)) {
+            return "SUPPORT";
+        }
+        return v;
     }
 
     private String toPatchVersion(String gameVersion) {
@@ -560,15 +744,65 @@ public class MatchStatistics extends JFrame {
         return builder.toString();
     }
 
+    private int parseRetryAfterSeconds(String retryAfterHeader) {
+        if (retryAfterHeader == null || retryAfterHeader.isBlank()) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(retryAfterHeader.trim());
+        } catch (NumberFormatException ex) {
+            return -1;
+        }
+    }
+
+    private void appendProgress(String message) {
+        String line = "[" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + message;
+        lastProgressAtMs.set(System.currentTimeMillis());
+        SwingUtilities.invokeLater(() -> responseArea.append(line + "\n"));
+    }
+
+    private Thread startHeartbeatThread() {
+        Thread heartbeat = new Thread(() -> {
+            long startedAt = System.currentTimeMillis();
+            while (requestRunning.get()) {
+                try {
+                    Thread.sleep(5000L);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                if (!requestRunning.get()) {
+                    return;
+                }
+
+                long now = System.currentTimeMillis();
+                long elapsedSec = (now - startedAt) / 1000L;
+                long sinceLastProgressSec = (now - lastProgressAtMs.get()) / 1000L;
+                appendProgress(
+                    "요청 진행 중... 총 " + elapsedSec + "초 경과 (마지막 진행 로그 " + sinceLastProgressSec + "초 전)"
+                );
+            }
+        });
+        heartbeat.setDaemon(true);
+        heartbeat.start();
+        return heartbeat;
+    }
+
     private static class ApiResponse {
         private final int statusCode;
         private final String body;
         private final String contentType;
+        private final int retryAfterSeconds;
 
         private ApiResponse(int statusCode, String body, String contentType) {
+            this(statusCode, body, contentType, -1);
+        }
+
+        private ApiResponse(int statusCode, String body, String contentType, int retryAfterSeconds) {
             this.statusCode = statusCode;
             this.body = body;
             this.contentType = contentType;
+            this.retryAfterSeconds = retryAfterSeconds;
         }
     }
 

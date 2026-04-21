@@ -5,6 +5,8 @@ program/package*/
 program/installer/
 program/package-input/
 program/**/*.class
+program/lib/*.jar
+program/build/
 
 # Runtime logs
 logs/

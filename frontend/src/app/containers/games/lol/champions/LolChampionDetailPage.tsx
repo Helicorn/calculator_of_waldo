@@ -24,6 +24,7 @@ import {
 } from "./lolChampionDetailTabs";
 import { LolChampionRoleStars } from "./LolChampionRoleStars";
 import { LolChampionSkinsGallery } from "./LolChampionSkinsGallery";
+import { LolChampionStatsTab } from "./LolChampionStatsTab";
 import { LolChampionStatsAtLevel } from "./LolChampionStatsAtLevel";
 
 const INFO_LABELS: Record<
@@ -332,6 +333,10 @@ export async function LolChampionDetailView({
                 <LolChampionStatsAtLevel stats={champion.stats} />
               </section>
             </div>
+          ) : null}
+
+          {activeTab === "champion-stats" ? (
+            <LolChampionStatsTab championId={champion.key} />
           ) : null}
         </div>
       </div>
