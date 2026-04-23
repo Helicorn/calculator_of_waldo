@@ -1,5 +1,5 @@
-import { MainPage } from "@/app/containers/main";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <MainPage />;
+  redirect("/games/lol?detail=history");
 }

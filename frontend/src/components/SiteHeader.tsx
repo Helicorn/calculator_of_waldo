@@ -11,7 +11,7 @@ import { apiFetch, apiGetJsonIfOk } from "@/lib/apiFetch";
 import { GAME_CATEGORIES } from "@/app/containers/games/gameCategories";
 import { LoginModal } from "@/components/LoginModal";
 import styles from "@/styles/components/SiteHeader.module.css";
-import waldoLogo from "@/styles/images/waldo_logo.png";
+import waldoLogo from "@/styles/images/waldo_logo2.png";
 
 const SESSION_POLL_MS = 45_000;
 
@@ -107,81 +107,83 @@ export function SiteHeader() {
         onLoggedIn={handleLoginSuccess}
       />
       <div className={styles.headerBar}>
-        <header className={styles.pageHeader}>
-          <div className={styles.headerLeadingSpacer} aria-hidden />
-          <Link href="/main" className={styles.logoLink} aria-label="홈으로">
-            <Image
-              src={waldoLogo}
-              alt="Waldo"
-              width={1080}
-              height={324}
-              className={styles.logoImage}
-              priority
-            />
-          </Link>
-          <nav className={styles.authNav} aria-label="계정 메뉴">
-            {!ready ? (
-              <span
-                className={styles.sessionPlaceholder}
-                aria-live="polite"
-                aria-busy="true"
-              >
-                …
-              </span>
-            ) : user ? (
-              <>
-                <span className={styles.userGreeting}>
-                  {greetingName ? `${greetingName} 님` : "회원 님"}
+        <div className={styles.headerInner}>
+          <header className={styles.pageHeader}>
+            <Link href="/main" className={styles.logoLink} aria-label="홈으로">
+              <Image
+                src={waldoLogo}
+                alt="Waldo"
+                width={240}
+                height={96}
+                className={styles.logoImage}
+                priority
+              />
+            </Link>
+            <nav className={styles.categoryNav} aria-label="게임 카테고리">
+              <ul className={styles.categoryList}>
+                {GAME_CATEGORIES.map((item) => (
+                  <li key={item.slug}>
+                    <Link
+                      href={`/games/${item.slug}`}
+                      className={styles.categoryLink}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <nav className={styles.authNav} aria-label="계정 메뉴">
+              {!ready ? (
+                <span
+                  className={styles.sessionPlaceholder}
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  …
                 </span>
-                <Link
-                  href="/profile"
-                  className={styles.settingsIconButton}
-                  aria-label="회원정보 수정"
-                  title="회원정보 수정"
-                >
-                  <GearIcon className={styles.settingsIcon} />
-                </Link>
-                <button
-                  type="button"
-                  className={styles.logoutButton}
-                  onClick={() => void handleLogout()}
-                  disabled={logoutPending}
-                >
-                  {logoutPending ? "로그아웃 중…" : "로그아웃"}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={`${styles.loginLink} ${styles.navPlainButton}`}
-                  onClick={() => setLoginOpen(true)}
-                >
-                  로그인
-                </button>
-                <Link href="/signup" className={styles.signupLink}>
-                  회원가입
-                </Link>
-              </>
-            )}
-          </nav>
-        </header>
-        <nav className={styles.categoryNav} aria-label="게임 카테고리">
-          <ul className={styles.categoryList}>
-            {GAME_CATEGORIES.map((item) => (
-              <li key={item.slug}>
-                <Link
-                  href={`/games/${item.slug}`}
-                  className={styles.categoryLink}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <hr className={styles.sectionDivider} />
+              ) : user ? (
+                <>
+                  <span className={styles.userGreeting}>
+                    {greetingName ? `${greetingName} 님` : "회원 님"}
+                  </span>
+                  <Link
+                    href="/profile"
+                    className={styles.settingsIconButton}
+                    aria-label="회원정보 수정"
+                    title="회원정보 수정"
+                  >
+                    <GearIcon className={styles.settingsIcon} />
+                  </Link>
+                  <button
+                    type="button"
+                    className={styles.logoutButton}
+                    onClick={() => void handleLogout()}
+                    disabled={logoutPending}
+                  >
+                    {logoutPending ? "로그아웃 중…" : "로그아웃"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.loginLink} ${styles.navPlainButton}`}
+                    onClick={() => setLoginOpen(true)}
+                  >
+                    로그인
+                  </button>
+                  <Link href="/signup" className={styles.signupLink}>
+                    회원가입
+                  </Link>
+                </>
+              )}
+            </nav>
+          </header>
+          <hr className={styles.sectionDivider} />
+        </div>
       </div>
+      <div className={styles.headerSpacer} aria-hidden />
     </>
   );
 }
