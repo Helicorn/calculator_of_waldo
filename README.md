@@ -5,10 +5,10 @@
 ## 프로젝트 개요
 
 - **목적**: 개인 취미 및 취업시 참고용
-- **기간**: 
+- **기간**: 2026년 4월~
 - **인원**: 1인
 - **내 역할**: AI에게 명령하기(실제 코드 작성: cursor, 방향 제시 상담: ChatGPT)
-- **배포 URL**: https://github.com/Helicorn/calculator_of_waldo
+- **배포 URL**: 아직 미배포
 - **시연 영상/문서**: 
 
 ## 핵심 기능
@@ -124,15 +124,29 @@ npm run lint
 npm run build
 ```
 
-## API 요약
+## 외부 API 사용 요약
 
-| Method | Endpoint | 설명 | 인증 필요 |
-|---|---|---|---|
-| GET | `/api/...` |  | Y/N |
-| POST | `/api/...` |  | Y/N |
-| PATCH | `/api/...` |  | Y/N |
+| Provider | Base URL | Endpoint | Method | 인증 방식 | 사용 목적 |
+|---|---|---|---|---|---|
+| Riot Games API | `https://asia.api.riotgames.com` | `/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` | GET | API Key (`X-Riot-Token`) | Riot ID로 PUUID 조회 |
+| Riot Games API | `https://asia.api.riotgames.com` | `/lol/match/v5/matches/by-puuid/{puuid}/ids` | GET | API Key (`X-Riot-Token`) | PUUID 기반 최근 매치 ID 목록 조회 |
+| Riot Games API | `https://asia.api.riotgames.com` | `/lol/match/v5/matches/{matchId}` | GET | API Key (`X-Riot-Token`) | 단일 매치 상세 정보 조회 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/data/{locale}/champion.json` | GET | 없음 | 챔피언/스킬/이미지 메타데이터 조회 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/api/versions.json` | GET | 없음 | 최신 데이터 버전 조회 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/data/ko_KR/champion/{championId}.json` | GET | 없음 | 단일 챔피언 상세 데이터 조회 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/data/ko_KR/summoner.json` | GET | 없음 | 소환사 주문 메타데이터 조회 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/img/champion/{championId}.png` | GET | 없음 | 챔피언 아이콘 이미지 로드 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/img/spell/{imageFull}` | GET | 없음 | 스펠 이미지 로드 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/img/passive/{imageFull}` | GET | 없음 | 패시브 이미지 로드 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/{version}/img/profileicon/{profileIconId}.png` | GET | 없음 | 프로필 아이콘 이미지 로드 |
+| Data Dragon (ddragon) | `https://ddragon.leagueoflegends.com` | `/cdn/img/champion/splash/{championId}_{skinNum}.jpg` | GET | 없음 | 챔피언 스킨 스플래시 이미지 로드 |
+| PokeAPI | `https://pokeapi.co/api/v2` | `/pokemon/{id or name}` | GET | 없음 | 포켓몬 기본 정보/스탯 조회 |
+| PokeAPI | `https://pokeapi.co/api/v2` | `/ability?limit=100000&offset=0` | GET | 없음 | 특성 전체 목록 동기화(백엔드) |
+| PokeAPI | `https://pokeapi.co/api/v2` | `/ability/{abilityId}` | GET | 없음 | 특성 상세/설명 조회(백엔드) |
+| PokeAPI | `https://pokeapi.co/api/v2` | `/move?limit=100000&offset=0` | GET | 없음 | 기술 전체 목록 동기화(백엔드) |
+| PokeAPI | `https://pokeapi.co/api/v2` | `{item.url}` (list 응답의 상세 URL) | GET | 없음 | 기술 상세 조회(백엔드) |
 
-> 상세 API 문서(OpenAPI/Swagger 등): 
+> 내부 API는 별도 섹션(예: `## 내부 API`)으로 분리하는 것을 권장합니다.
 
 ## 데이터 모델
 
@@ -181,9 +195,9 @@ npm run build
 
 ## 회고
 
-- 잘한 점: 
-- 아쉬운 점: 
-- 다음 프로젝트에 적용할 점: 
+- 잘한 점: 리그오브레전드 전적검색, 포켓몬 스펙 등 외부 API로부터 응답값을 잘 불러와 원하는 페이지 구현 및 필요한 정보 출력
+- 아쉬운 점: 아쉬운 디자인, 깔끔하지 못한 카테고리 분류
+- 다음 프로젝트에 적용할 점: 조금 더 세밀한 기획을 통해 프로젝트가 나아갈 방향성 확실하게 제시
 
 ## 라이선스
 
