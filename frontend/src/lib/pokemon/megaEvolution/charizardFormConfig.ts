@@ -1,4 +1,4 @@
-import { POKEMON_FORM_OVERRIDES } from "@/lib/pokemon/pokemonFormOverrides";
+import { POKEMON_FORM_OVERRIDES } from "@/lib/pokemon/specialRules/pokemonFormOverrides";
 
 export type CharizardFormKey = "base" | "mega_x" | "mega_y";
 

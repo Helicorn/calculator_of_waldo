@@ -21,13 +21,13 @@ import {
   type CharizardFormKey,
 } from "@/lib/pokemon/megaEvolution";
 import damageClassNameMap from "@/lib/pokemon/damageClassNameMap.json";
-import { ROTOM_FORM_MOVE_OVERRIDES } from "@/lib/pokemon/rotomFormMoveOverrides";
+import { ROTOM_FORM_MOVE_OVERRIDES } from "@/lib/pokemon/specialRules/rotomFormMoveOverrides";
 import {
   AEGISLASH_BLADE_BASE_STATS,
   AEGISLASH_SHIELD_BASE_STATS,
   KINGS_SHIELD_MOVE_ID,
   SPECIAL_MOVE_RULES,
-} from "@/lib/pokemon/specialMoveRules";
+} from "@/lib/pokemon/specialRules/specialMoveRules";
 import { TYPE_COLOR_BY_NAME } from "@/lib/pokemon/typeColorByName";
 import { TYPE_EFFECTIVENESS_CHART } from "@/lib/pokemon/typeEffectivenessChart";
 import typeNameMap from "@/lib/pokemon/typeNameMap.json";

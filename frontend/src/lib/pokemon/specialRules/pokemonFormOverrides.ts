@@ -83,4 +83,3 @@ export const POKEMON_FORM_OVERRIDES: Record<string, PokemonFormOverride> = {
     note: "메가리자몽Y",
   },
 };
-

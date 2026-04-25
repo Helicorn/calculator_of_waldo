@@ -16,7 +16,7 @@ type ChampionStatsRow = {
   pickRate: number | null;
 };
 
-type LolChampionStatsTabProps = {
+type LolChampionRecordsTabProps = {
   championId: string;
 };
 
@@ -25,7 +25,7 @@ function displayRate(value: number | null): string {
   return `${value.toFixed(2)}%`;
 }
 
-export function LolChampionStatsTab({ championId }: LolChampionStatsTabProps) {
+export function LolChampionRecordsTab({ championId }: LolChampionRecordsTabProps) {
   const [rows, setRows] = useState<ChampionStatsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

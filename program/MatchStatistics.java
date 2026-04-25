@@ -35,7 +35,7 @@ import program.repository.MatchRepository;
 import program.repository.SeedPlayerRepository;
 
 /**
- * 특정 버전 및 특정 티어의 매치 전적을 조회하고, 조회한 매치 전적을 데이터베이스에 저장하는 프로그램(솔로랭크, 에메랄드 1)
+ * 특정 버전 및 특정 티어의 매치 전적을 조회하고, 조회한 매치 전적을 데이터베이스에 저장하는 프로그램(솔로랭크, 에메랄드 1~4)
  * 원래 배치를 이용하여 매치 전적을 저장하려 했으나, 개인 취미 프로젝트 특성상 배치 이용이 부적합하여 수동으로 저장하는 방식으로 구현
  */
 
@@ -44,10 +44,14 @@ public class MatchStatistics extends JFrame {
         DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private static final Pattern JSON_STRING_PATTERN_TEMPLATE =
         Pattern.compile("\"%s\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-    /** {@code page}는 1부터 증가시키며, 빈 배열 응답이 나올 때까지 모두 조회한다. */
+    /**
+     * {@code rankDivision}(I~IV), {@code page}는 각각 순회하며,
+     * 빈 배열 응답이 나올 때까지 모두 조회한다.
+     */
     private static final String LEAGUE_EXP_URL_TEMPLATE =
         "https://kr.api.riotgames.com/lol/league-exp/v4/entries/"
-            + "RANKED_SOLO_5x5/EMERALD/I?page=%d";
+            + "RANKED_SOLO_5x5/EMERALD/%s?page=%d";
+    private static final String[] EMERALD_RANK_DIVISIONS = {"I", "II", "III", "IV"};
     /** Riot 한 페이지당 항목 수보다 넉넉한 상한(비정상 응답 시 무한 루프 방지). */
     private static final int LEAGUE_EXP_MAX_PAGES = 1000;
     private static final int LEAGUE_EXP_MAX_RETRIES_PER_PAGE = 8;
@@ -143,54 +147,64 @@ public class MatchStatistics extends JFrame {
     }
 
     /**
-     * league-exp-v4를 page=1부터 순회해, 빈 페이지가 나올 때까지 전부 받아 하나의 JSON 배열로 합친다.
+     * league-exp-v4를 EMERALD I~IV 각각에 대해 page=1부터 순회해,
+     * 빈 페이지가 나올 때까지 전부 받아 하나의 JSON 배열로 합친다.
      */
     private ApiResponse callLeagueExp(String apiKey) throws Exception {
         List<String> allObjectJson = new ArrayList<>();
         String lastContentType = "application/json";
         int lastStatus = 200;
 
-        for (int page = 1; ; page++) {
-            if (page > LEAGUE_EXP_MAX_PAGES) {
-                throw new IOException(
-                    "league-exp-v4 페이지 상한(" + LEAGUE_EXP_MAX_PAGES + ")에 도달했습니다. "
-                        + "마지막 응답에 아직 항목이 있어 중단했습니다."
-                );
-            }
-
-            if (page > 1) {
-                try {
-                    Thread.sleep(150);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("league-exp 페이지 조회가 중단되었습니다.", ie);
+        for (String rankDivision : EMERALD_RANK_DIVISIONS) {
+            for (int page = 1; ; page++) {
+                if (page > LEAGUE_EXP_MAX_PAGES) {
+                    throw new IOException(
+                        "league-exp-v4 페이지 상한(" + LEAGUE_EXP_MAX_PAGES + ")에 도달했습니다. "
+                            + "division=" + rankDivision + " 마지막 응답에 아직 항목이 있어 중단했습니다."
+                    );
                 }
-            }
 
-            String url = String.format(LEAGUE_EXP_URL_TEMPLATE, page);
-            appendProgress("league-exp page " + page + " 조회 중...");
-            ApiResponse pageResponse = callLeagueExpPageWithRetry(apiKey, url, page);
-            lastStatus = pageResponse.statusCode;
-            if (pageResponse.contentType != null && !pageResponse.contentType.isBlank()) {
-                lastContentType = pageResponse.contentType;
-            }
-
-            if (pageResponse.statusCode < 200 || pageResponse.statusCode >= 300) {
-                if (page == 1) {
-                    return pageResponse;
+                if (page > 1) {
+                    try {
+                        Thread.sleep(150);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new IOException("league-exp 페이지 조회가 중단되었습니다.", ie);
+                    }
                 }
-                throw new IOException(
-                    "league-exp-v4 페이지 " + page + " HTTP 실패: " + pageResponse.statusCode
-                );
-            }
 
-            List<String> pageObjects = splitTopLevelObjects(pageResponse.body.trim());
-            if (pageObjects.isEmpty()) {
-                appendProgress("league-exp page " + page + " 비어 있음 -> 페이지 순회 종료");
-                break;
+                String url = String.format(LEAGUE_EXP_URL_TEMPLATE, rankDivision, page);
+                appendProgress("league-exp division " + rankDivision + " page " + page + " 조회 중...");
+                ApiResponse pageResponse = callLeagueExpPageWithRetry(apiKey, url, rankDivision, page);
+                lastStatus = pageResponse.statusCode;
+                if (pageResponse.contentType != null && !pageResponse.contentType.isBlank()) {
+                    lastContentType = pageResponse.contentType;
+                }
+
+                if (pageResponse.statusCode < 200 || pageResponse.statusCode >= 300) {
+                    if (page == 1) {
+                        return pageResponse;
+                    }
+                    throw new IOException(
+                        "league-exp-v4 division " + rankDivision + " 페이지 " + page
+                            + " HTTP 실패: " + pageResponse.statusCode
+                    );
+                }
+
+                List<String> pageObjects = splitTopLevelObjects(pageResponse.body.trim());
+                if (pageObjects.isEmpty()) {
+                    appendProgress(
+                        "league-exp division " + rankDivision + " page " + page
+                            + " 비어 있음 -> division 순회 종료"
+                    );
+                    break;
+                }
+                appendProgress(
+                    "league-exp division " + rankDivision + " page " + page + " 항목 "
+                        + pageObjects.size() + "건 수집"
+                );
+                allObjectJson.addAll(pageObjects);
             }
-            appendProgress("league-exp page " + page + " 항목 " + pageObjects.size() + "건 수집");
-            allObjectJson.addAll(pageObjects);
         }
 
         if (allObjectJson.isEmpty()) {
@@ -204,6 +218,7 @@ public class MatchStatistics extends JFrame {
     private ApiResponse callLeagueExpPageWithRetry(
         String apiKey,
         String urlString,
+        String rankDivision,
         int page
     ) throws Exception {
         for (int attempt = 1; attempt <= LEAGUE_EXP_MAX_RETRIES_PER_PAGE; attempt++) {
@@ -219,12 +234,16 @@ public class MatchStatistics extends JFrame {
             long waitMs = resolveRetryWaitMs(response, attempt);
             long waitSeconds = Math.max(1L, waitMs / 1000L);
             appendProgress(
-                "league-exp page " + page + " 429 제한 -> " + waitSeconds + "초 대기 후 재시도 ("
+                "league-exp division " + rankDivision + " page " + page + " 429 제한 -> "
+                    + waitSeconds + "초 대기 후 재시도 ("
                     + attempt + "/" + LEAGUE_EXP_MAX_RETRIES_PER_PAGE + ")"
             );
             sleepQuietly(waitMs);
         }
-        throw new IOException("league-exp-v4 페이지 " + page + " 재시도 로직이 비정상 종료되었습니다.");
+        throw new IOException(
+            "league-exp-v4 division " + rankDivision + " 페이지 " + page
+                + " 재시도 로직이 비정상 종료되었습니다."
+        );
     }
 
     private long resolveRetryWaitMs(ApiResponse response, int attempt) {

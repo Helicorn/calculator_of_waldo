@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { LolChampionDetailView } from "@/app/containers/games/lol/champions/LolChampionDetailPage";
-import { resolveChampionDetailTab } from "@/app/containers/games/lol/champions/lolChampionDetailTabs";
+import { resolveChampionDetailTab } from "@/app/containers/games/lol/champions/tabs/shared/lolChampionDetailTabs";
 
 function firstQuery(
   v: string | string[] | undefined,

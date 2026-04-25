@@ -2,7 +2,7 @@ export const CHAMPION_DETAIL_TABS = [
   { id: "overview", label: "개요" },
   { id: "skins", label: "스킨" },
   { id: "stats", label: "기본 능력치" },
-  { id: "champion-stats", label: "챔피언 통계" },
+  { id: "records", label: "챔피언 통계" },
 ] as const;
 
 export type ChampionDetailTabId = (typeof CHAMPION_DETAIL_TABS)[number]["id"];
@@ -10,6 +10,7 @@ export type ChampionDetailTabId = (typeof CHAMPION_DETAIL_TABS)[number]["id"];
 export function resolveChampionDetailTab(
   raw: string | undefined,
 ): ChampionDetailTabId {
+  if (raw === "champion-stats") return "records";
   const ids = CHAMPION_DETAIL_TABS.map((t) => t.id);
   if (raw && (ids as readonly string[]).includes(raw)) {
     return raw as ChampionDetailTabId;
