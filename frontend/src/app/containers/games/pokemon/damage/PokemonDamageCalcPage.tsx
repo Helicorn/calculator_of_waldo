@@ -4,9 +4,17 @@ import { Jua } from "next/font/google";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import pokemon from "pokemon";
 
-import { EvInputBox } from "./components/EvInputBox";
-import { MoveOptionCombobox } from "./components/MoveOptionCombobox";
-import { PokemonNameCombobox } from "./PokemonNameCombobox";
+import {
+  BASE_STAT_ROWS,
+  DEFAULT_NATURE_KEY,
+  POC_MAX_EV_TERM,
+  getNatureModifier,
+  type EvMap,
+  type StatName,
+} from "./components/Level50StatCards";
+import { type RankStage } from "./components/RankControls";
+import { PokemonBattleSideCard } from "./components/PokemonBattleSideCard";
+import { DamageResultCard } from "./components/DamageResultCard";
 import { apiFetch } from "@/lib/apiFetch";
 import {
   ROTOM_FORM_OPTIONS,
@@ -193,9 +201,6 @@ type DamageSummary = {
 } | null;
 
 type WeatherKind = "none" | "sunny" | "rain" | "sandstorm" | "snow";
-type RankStage = -6 | -5 | -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
-
-const RANK_STAGE_OPTIONS: RankStage[] = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6];
 
 function rankStageMultiplier(stage: RankStage): number {
   if (stage >= 0) return (2 + stage) / 2;
@@ -234,21 +239,6 @@ function applyRotomFormMoveOverrides(
   return next;
 }
 
-function weatherLabel(weather: WeatherKind): string {
-  switch (weather) {
-    case "sunny":
-      return "쾌청";
-    case "rain":
-      return "비";
-    case "sandstorm":
-      return "모래바람";
-    case "snow":
-      return "눈";
-    default:
-      return "없음";
-  }
-}
-
 function weatherDamageMultiplier(moveType: string, weather: WeatherKind): number {
   const t = moveType.trim().toLowerCase();
   if (weather === "sunny") {
@@ -260,41 +250,6 @@ function weatherDamageMultiplier(moveType: string, weather: WeatherKind): number
     if (t === "fire") return 0.5;
   }
   return 1;
-}
-
-function RankSelect({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: RankStage;
-  onChange: (next: RankStage) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <label
-        htmlFor={id}
-        className={`${baeminJua.className} text-xs font-semibold text-neutral-700 dark:text-neutral-300`}
-      >
-        {label}
-      </label>
-      <select
-        id={id}
-        value={String(value)}
-        onChange={(e) => onChange(Number(e.target.value) as RankStage)}
-        className="rounded-md border border-black/[.12] bg-white px-2 py-1 text-xs text-neutral-900 outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-white/[.16] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:ring-neutral-500"
-      >
-        {RANK_STAGE_OPTIONS.map((stage) => (
-          <option key={stage} value={stage}>
-            {stage > 0 ? `+${stage}` : String(stage)}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
 }
 
 function computeDamageSummary({
@@ -497,101 +452,8 @@ function waldoMoveRowId(row: WaldoMoveRow): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const BASE_STAT_ROWS = [
-  { statName: "hp", label: "체력" },
-  { statName: "attack", label: "공격" },
-  { statName: "defense", label: "방어" },
-  { statName: "special-attack", label: "특공" },
-  { statName: "special-defense", label: "특방" },
-  { statName: "speed", label: "스피드" },
-] as const;
-
-type StatName = (typeof BASE_STAT_ROWS)[number]["statName"];
-type EvMap = Record<StatName, number>;
-type NonHpStatName = Exclude<StatName, "hp">;
-type NatureEntry = {
-  key: string;
-  label: string;
-  up?: NonHpStatName;
-  down?: NonHpStatName;
-};
-
-/** 포챔스식: 공식의 floor(노력치/4) 항에 0~32 정수를 그대로 사용 */
-const POC_MAX_EV_TERM = 32;
 /** 능력치별 노력치 합산 상한 */
 const POC_MAX_EV_TOTAL = 66;
-const DEFAULT_NATURE_KEY = "hardy";
-const STAT_LABEL_BY_NAME: Record<StatName, string> = Object.fromEntries(
-  BASE_STAT_ROWS.map((row) => [row.statName, row.label]),
-) as Record<StatName, string>;
-const NON_HP_STATS: NonHpStatName[] = [
-  "attack",
-  "defense",
-  "speed",
-  "special-attack",
-  "special-defense",
-];
-const NEUTRAL_NATURE_KEY_BY_STAT: Record<NonHpStatName, string> = {
-  attack: "hardy",
-  defense: "docile",
-  speed: "serious",
-  "special-attack": "bashful",
-  "special-defense": "quirky",
-};
-
-const NATURES: NatureEntry[] = [
-  { key: "hardy", label: "성실 (Hardy)" },
-  { key: "lonely", label: "외로움 (Lonely)", up: "attack", down: "defense" },
-  { key: "brave", label: "용감 (Brave)", up: "attack", down: "speed" },
-  { key: "adamant", label: "고집 (Adamant)", up: "attack", down: "special-attack" },
-  { key: "naughty", label: "개구쟁이 (Naughty)", up: "attack", down: "special-defense" },
-  { key: "bold", label: "대담 (Bold)", up: "defense", down: "attack" },
-  { key: "docile", label: "온순 (Docile)" },
-  { key: "relaxed", label: "무사태평 (Relaxed)", up: "defense", down: "speed" },
-  { key: "impish", label: "장난꾸러기 (Impish)", up: "defense", down: "special-attack" },
-  { key: "lax", label: "촐랑 (Lax)", up: "defense", down: "special-defense" },
-  { key: "timid", label: "겁쟁이 (Timid)", up: "speed", down: "attack" },
-  { key: "hasty", label: "성급 (Hasty)", up: "speed", down: "defense" },
-  { key: "serious", label: "성급하지않음 (Serious)" },
-  { key: "jolly", label: "명랑 (Jolly)", up: "speed", down: "special-attack" },
-  { key: "naive", label: "천진난만 (Naive)", up: "speed", down: "special-defense" },
-  { key: "modest", label: "조심 (Modest)", up: "special-attack", down: "attack" },
-  { key: "mild", label: "덜렁 (Mild)", up: "special-attack", down: "defense" },
-  { key: "quiet", label: "냉정 (Quiet)", up: "special-attack", down: "speed" },
-  { key: "bashful", label: "수줍음 (Bashful)" },
-  { key: "rash", label: "덜렁대는 (Rash)", up: "special-attack", down: "special-defense" },
-  { key: "calm", label: "차분 (Calm)", up: "special-defense", down: "attack" },
-  { key: "gentle", label: "얌전 (Gentle)", up: "special-defense", down: "defense" },
-  { key: "sassy", label: "건방 (Sassy)", up: "special-defense", down: "speed" },
-  { key: "careful", label: "신중 (Careful)", up: "special-defense", down: "special-attack" },
-  { key: "quirky", label: "변덕 (Quirky)" },
-];
-
-function getNatureByKey(key: string): NatureEntry {
-  return NATURES.find((nature) => nature.key === key) ?? NATURES[0];
-}
-
-function getNatureByUpDown(up: NonHpStatName, down: NonHpStatName): NatureEntry {
-  if (up === down) {
-    return getNatureByKey(NEUTRAL_NATURE_KEY_BY_STAT[up]);
-  }
-  return (
-    NATURES.find((nature) => nature.up === up && nature.down === down) ??
-    getNatureByKey(DEFAULT_NATURE_KEY)
-  );
-}
-
-function getNatureShortLabel(nature: NatureEntry): string {
-  return nature.label.split(" ")[0];
-}
-
-function getNatureModifier(natureKey: string, statName: StatName): number {
-  if (statName === "hp") return 1;
-  const nature = getNatureByKey(natureKey);
-  if (nature.up === statName) return 1.1;
-  if (nature.down === statName) return 0.9;
-  return 1;
-}
 
 /** 표시용: Gen3+ 실스탯 공식 */
 const DISPLAY_LEVEL = 50;
@@ -802,156 +664,6 @@ function usePokemonByKoreanName(selectedName: string) {
   return { data, isLoading, error };
 }
 
-function StatValueCard({
-  label,
-  value,
-  isLoading,
-  evInputId,
-  evValue,
-  onEvChange,
-}: {
-  label: string;
-  value: number | null;
-  isLoading: boolean;
-  evInputId: string;
-  evValue: number;
-  onEvChange: (next: number) => void;
-}) {
-  const surface =
-    "flex h-full min-h-[4.75rem] flex-col rounded-2xl border border-black/[.12] bg-neutral-50 pl-4 pr-3 pb-3 pt-4 dark:border-white/[.16] dark:bg-neutral-900/90";
-  const legendBg = "bg-transparent px-1.5";
-
-  return (
-    <div className={`relative ${surface}`}>
-      <span
-        className={`${baeminJua.className} absolute left-3 top-0 z-10 -translate-y-1/2 text-xs font-medium text-neutral-600 ${legendBg} dark:text-neutral-400`}
-      >
-        {label}
-      </span>
-      <div className="flex min-h-[2.5rem] items-center gap-2">
-        <p className="flex flex-1 min-w-0 items-center justify-center text-xl font-semibold tabular-nums tracking-tight text-neutral-900 sm:text-2xl dark:text-neutral-50">
-          {isLoading ? "…" : value != null ? value : "—"}
-        </p>
-        <EvInputBox
-          id={evInputId}
-          label={label}
-          value={evValue}
-          maxValue={POC_MAX_EV_TERM}
-          compact
-          onChange={onEvChange}
-        />
-      </div>
-    </div>
-  );
-}
-
-function Level50StatCards({
-  stats,
-  isLoading,
-  evMap,
-  onEvChange,
-  natureKey,
-  onNatureChange,
-  evInputIdPrefix,
-}: {
-  stats: Record<string, number> | null;
-  isLoading: boolean;
-  evMap: EvMap;
-  onEvChange: (stat: StatName, value: number) => void;
-  natureKey: string;
-  onNatureChange: (natureKey: string) => void;
-  evInputIdPrefix: string;
-}) {
-  const matrixHeaderClass =
-    "border border-black/[.08] px-1.5 py-1 text-center text-[11px] font-semibold text-neutral-700 dark:border-white/[.12] dark:text-neutral-200";
-  const matrixCellClass =
-    "border border-black/[.08] p-0 dark:border-white/[.12]";
-
-  return (
-    <div className="mt-3 w-full" aria-label="50레벨 실스탯">
-      <div className="rounded-xl border border-black/[.1] bg-neutral-50/90 p-2 dark:border-white/[.14] dark:bg-neutral-900/50">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-            성격 보정표
-          </p>
-          <button
-            type="button"
-            onClick={() => onNatureChange(DEFAULT_NATURE_KEY)}
-            className={`rounded-md border px-2 py-1 text-[11px] font-medium transition ${
-              natureKey === DEFAULT_NATURE_KEY
-                ? "cursor-default border-violet-600 bg-violet-600 text-white dark:border-violet-500 dark:bg-violet-500 dark:text-white"
-                : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-white/[.2] dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            }`}
-            disabled={natureKey === DEFAULT_NATURE_KEY}
-          >
-            무보정 (x1.0)
-          </button>
-        </div>
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th className={matrixHeaderClass} />
-              {NON_HP_STATS.map((stat) => (
-                <th key={`up-${stat}`} className={matrixHeaderClass}>
-                  +{STAT_LABEL_BY_NAME[stat]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {NON_HP_STATS.map((downStat) => (
-              <tr key={`row-${downStat}`}>
-                <th className={matrixHeaderClass}>-{STAT_LABEL_BY_NAME[downStat]}</th>
-                {NON_HP_STATS.map((upStat) => {
-                  if (upStat === downStat) {
-                    return (
-                      <td
-                        key={`${downStat}-${upStat}`}
-                        className={`${matrixCellClass} bg-neutral-200`}
-                      />
-                    );
-                  }
-                  const cellNature = getNatureByUpDown(upStat, downStat);
-                  const isActive = cellNature.key === natureKey;
-                  return (
-                    <td key={`${downStat}-${upStat}`} className={matrixCellClass}>
-                      <button
-                        type="button"
-                        onClick={() => onNatureChange(cellNature.key)}
-                        className={`w-full px-1 py-1 text-center text-[11px] transition ${
-                          isActive
-                            ? "bg-violet-600 text-white"
-                            : "bg-white text-neutral-800 hover:bg-neutral-100 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                        }`}
-                        aria-pressed={isActive}
-                      >
-                        {getNatureShortLabel(cellNature)}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-3 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-        {BASE_STAT_ROWS.map((row) => (
-          <div key={row.statName} className="min-w-0">
-            <StatValueCard
-              label={row.label}
-              value={stats?.[row.statName] ?? null}
-              isLoading={isLoading}
-              evInputId={`${evInputIdPrefix}-${row.statName}`}
-              evValue={evMap[row.statName]}
-              onEvChange={(v) => onEvChange(row.statName, v)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /** 포켓몬 게임 페이지 `?detail=damage` 본문 */
 export function PokemonDamageCalcPage() {
@@ -1252,360 +964,128 @@ export function PokemonDamageCalcPage() {
 
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-          <div
-            className={`${box} flex min-h-[220px] flex-col gap-3 md:min-h-[280px]`}
-            aria-labelledby="damage-calc-attacker-title"
-            style={attackerCardStyle}
-          >
-            <h3
-              id="damage-calc-attacker-title"
-              className={`${baeminJua.className} text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100`}
-            >
-              때리는 포켓몬
-            </h3>
-            <PokemonNameCombobox
-              id="pokemon-damage-attacker"
-              labelledBy="damage-calc-attacker-title"
-              value={attackerName}
-              onChange={setAttackerName}
-              wrapperClassName={comboboxWidth}
-            />
-            {attackerIsRotom ? (
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="pokemon-damage-attacker-rotom-form"
-                  className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
-                >
-                  로토무 폼
-                </label>
-                <select
-                  id="pokemon-damage-attacker-rotom-form"
-                  value={attackerRotomForm}
-                  onChange={(e) => setAttackerRotomForm(e.target.value as RotomFormKey)}
-                  className="rounded-md border border-black/[.12] bg-white px-2 py-1 text-xs text-neutral-900 outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-white/[.16] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:ring-neutral-500"
-                >
-                  {ROTOM_FORM_OPTIONS.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            {attackerIsCharizard ? (
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="pokemon-damage-attacker-charizard-form"
-                  className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
-                >
-                  메가 폼
-                </label>
-                <select
-                  id="pokemon-damage-attacker-charizard-form"
-                  value={attackerCharizardForm}
-                  onChange={(e) =>
-                    setAttackerCharizardForm(e.target.value as CharizardFormKey)
-                  }
-                  className="rounded-md border border-black/[.12] bg-white px-2 py-1 text-xs text-neutral-900 outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-white/[.16] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:ring-neutral-500"
-                >
-                  {CHARIZARD_FORM_OPTIONS.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            {attacker.error ? (
-              <p className="text-xs text-red-600 dark:text-red-400">
-                {attacker.error}
-              </p>
-            ) : null}
-            <Level50StatCards
-              stats={attackerStats}
-              isLoading={attacker.isLoading}
-              evMap={attackerEv}
-              natureKey={attackerNatureKey}
-              onNatureChange={setAttackerNatureKey}
-              evInputIdPrefix="pokemon-damage-attacker-ev"
-              onEvChange={(stat, value) =>
-                setAttackerEv((prev) => applyEvChange(prev, stat, value))
-              }
-            />
-            <div className="mt-1">
-              <label
-                htmlFor="pokemon-damage-attacker-move"
-                className={`${baeminJua.className} mb-0.5 block text-sm font-semibold text-neutral-800 dark:text-neutral-200`}
-              >
-                사용 기술
-              </label>
-              <MoveOptionCombobox
-                id="pokemon-damage-attacker-move"
-                labelledBy="damage-calc-attacker-title"
-                value={attackerMove}
-                onChange={setAttackerMove}
-                options={attackerMoveComboboxOptions}
-                disabled={attackerMoveOptions.length === 0}
-                placeholder="기술을 입력하거나 목록에서 선택하세요"
-                emptyText="일치하는 기술이 없습니다."
-              />
-              {!attacker.isLoading &&
-              attacker.data &&
+          <PokemonBattleSideCard
+            cardClassName={`${box} flex min-h-[220px] flex-col gap-3 md:min-h-[280px]`}
+            titleId="damage-calc-attacker-title"
+            title="때리는 포켓몬"
+            cardStyle={attackerCardStyle}
+            fontClassName={baeminJua.className}
+            nameInputId="pokemon-damage-attacker"
+            name={attackerName}
+            onChangeName={setAttackerName}
+            nameComboboxWidthClassName={comboboxWidth}
+            showRotomForm={attackerIsRotom}
+            rotomFormId="pokemon-damage-attacker-rotom-form"
+            rotomFormValue={attackerRotomForm}
+            rotomFormOptions={ROTOM_FORM_OPTIONS}
+            onChangeRotomForm={(value) => setAttackerRotomForm(value as RotomFormKey)}
+            showCharizardForm={attackerIsCharizard}
+            charizardFormId="pokemon-damage-attacker-charizard-form"
+            charizardFormValue={attackerCharizardForm}
+            charizardFormOptions={CHARIZARD_FORM_OPTIONS}
+            onChangeCharizardForm={(value) =>
+              setAttackerCharizardForm(value as CharizardFormKey)
+            }
+            error={attacker.error}
+            stats={attackerStats}
+            isLoading={attacker.isLoading}
+            evMap={attackerEv}
+            natureKey={attackerNatureKey}
+            onNatureChange={setAttackerNatureKey}
+            evInputIdPrefix="pokemon-damage-attacker-ev"
+            onEvChange={(stat, value) =>
+              setAttackerEv((prev) => applyEvChange(prev, stat, value))
+            }
+            moveInputId="pokemon-damage-attacker-move"
+            moveValue={attackerMove}
+            onChangeMove={setAttackerMove}
+            moveOptions={attackerMoveComboboxOptions}
+            isMoveDisabled={attackerMoveOptions.length === 0}
+            showDbMissingMoveHint={
+              !attacker.isLoading &&
+              Boolean(attacker.data) &&
               attackerMoveOptions.length === 0 &&
               !dbMovesError &&
-              dbMoveById.size > 0 ? (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                  이 포켓몬 도감 기술 중 DB(T_POKEMON_MOVE)에 있는 기술이 없습니다.
-                </p>
-              ) : null}
-              <MoveDetailPanel meta={attackerSelectedMoveMeta} />
-              <div className="mt-2 flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <RankSelect
-                    id="pokemon-damage-attacker-attack-rank"
-                    label="공격 랭크"
-                    value={attackerAttackRank}
-                    onChange={setAttackerAttackRank}
-                  />
-                  <RankSelect
-                    id="pokemon-damage-attacker-special-attack-rank"
-                    label="특공 랭크"
-                    value={attackerSpecialAttackRank}
-                    onChange={setAttackerSpecialAttackRank}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <RankSelect
-                    id="pokemon-damage-attacker-defense-rank"
-                    label="방어 랭크"
-                    value={attackerDefenseRank}
-                    onChange={setAttackerDefenseRank}
-                  />
-                  <RankSelect
-                    id="pokemon-damage-attacker-special-defense-rank"
-                    label="특방 랭크"
-                    value={attackerSpecialDefenseRank}
-                    onChange={setAttackerSpecialDefenseRank}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            className={`${box} flex min-h-[220px] flex-col gap-3 md:min-h-[280px]`}
-            aria-labelledby="damage-calc-defender-title"
-            style={defenderCardStyle}
-          >
-            <h3
-              id="damage-calc-defender-title"
-              className={`${baeminJua.className} text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100`}
-            >
-              맞는 포켓몬
-            </h3>
-            <PokemonNameCombobox
-              id="pokemon-damage-defender"
-              labelledBy="damage-calc-defender-title"
-              value={defenderName}
-              onChange={setDefenderName}
-              wrapperClassName={comboboxWidth}
-            />
-            {defenderIsRotom ? (
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="pokemon-damage-defender-rotom-form"
-                  className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
-                >
-                  로토무 폼
-                </label>
-                <select
-                  id="pokemon-damage-defender-rotom-form"
-                  value={defenderRotomForm}
-                  onChange={(e) => setDefenderRotomForm(e.target.value as RotomFormKey)}
-                  className="rounded-md border border-black/[.12] bg-white px-2 py-1 text-xs text-neutral-900 outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-white/[.16] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:ring-neutral-500"
-                >
-                  {ROTOM_FORM_OPTIONS.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            {defenderIsCharizard ? (
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="pokemon-damage-defender-charizard-form"
-                  className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
-                >
-                  메가 폼
-                </label>
-                <select
-                  id="pokemon-damage-defender-charizard-form"
-                  value={defenderCharizardForm}
-                  onChange={(e) =>
-                    setDefenderCharizardForm(e.target.value as CharizardFormKey)
-                  }
-                  className="rounded-md border border-black/[.12] bg-white px-2 py-1 text-xs text-neutral-900 outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-white/[.16] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:ring-neutral-500"
-                >
-                  {CHARIZARD_FORM_OPTIONS.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            {defender.error ? (
-              <p className="text-xs text-red-600 dark:text-red-400">
-                {defender.error}
-              </p>
-            ) : null}
-            <Level50StatCards
-              stats={defenderStats}
-              isLoading={defender.isLoading}
-              evMap={defenderEv}
-              natureKey={defenderNatureKey}
-              onNatureChange={setDefenderNatureKey}
-              evInputIdPrefix="pokemon-damage-defender-ev"
-              onEvChange={(stat, value) =>
-                setDefenderEv((prev) => applyEvChange(prev, stat, value))
-              }
-            />
-            <div className="mt-1">
-              <label
-                htmlFor="pokemon-damage-defender-move"
-                className={`${baeminJua.className} mb-0.5 block text-sm font-semibold text-neutral-800 dark:text-neutral-200`}
-              >
-                사용 기술
-              </label>
-              <MoveOptionCombobox
-                id="pokemon-damage-defender-move"
-                labelledBy="damage-calc-defender-title"
-                value={defenderMove}
-                onChange={setDefenderMove}
-                options={defenderMoveComboboxOptions}
-                disabled={defenderMoveOptions.length === 0}
-                placeholder="기술을 입력하거나 목록에서 선택하세요"
-                emptyText="일치하는 기술이 없습니다."
-              />
-              {!defender.isLoading &&
-              defender.data &&
+              dbMoveById.size > 0
+            }
+            moveDetail={<MoveDetailPanel meta={attackerSelectedMoveMeta} />}
+            rankIdPrefix="pokemon-damage-attacker"
+            attackRank={attackerAttackRank}
+            specialAttackRank={attackerSpecialAttackRank}
+            defenseRank={attackerDefenseRank}
+            specialDefenseRank={attackerSpecialDefenseRank}
+            onAttackRankChange={setAttackerAttackRank}
+            onSpecialAttackRankChange={setAttackerSpecialAttackRank}
+            onDefenseRankChange={setAttackerDefenseRank}
+            onSpecialDefenseRankChange={setAttackerSpecialDefenseRank}
+          />
+          <PokemonBattleSideCard
+            cardClassName={`${box} flex min-h-[220px] flex-col gap-3 md:min-h-[280px]`}
+            titleId="damage-calc-defender-title"
+            title="맞는 포켓몬"
+            cardStyle={defenderCardStyle}
+            fontClassName={baeminJua.className}
+            nameInputId="pokemon-damage-defender"
+            name={defenderName}
+            onChangeName={setDefenderName}
+            nameComboboxWidthClassName={comboboxWidth}
+            showRotomForm={defenderIsRotom}
+            rotomFormId="pokemon-damage-defender-rotom-form"
+            rotomFormValue={defenderRotomForm}
+            rotomFormOptions={ROTOM_FORM_OPTIONS}
+            onChangeRotomForm={(value) => setDefenderRotomForm(value as RotomFormKey)}
+            showCharizardForm={defenderIsCharizard}
+            charizardFormId="pokemon-damage-defender-charizard-form"
+            charizardFormValue={defenderCharizardForm}
+            charizardFormOptions={CHARIZARD_FORM_OPTIONS}
+            onChangeCharizardForm={(value) =>
+              setDefenderCharizardForm(value as CharizardFormKey)
+            }
+            error={defender.error}
+            stats={defenderStats}
+            isLoading={defender.isLoading}
+            evMap={defenderEv}
+            natureKey={defenderNatureKey}
+            onNatureChange={setDefenderNatureKey}
+            evInputIdPrefix="pokemon-damage-defender-ev"
+            onEvChange={(stat, value) =>
+              setDefenderEv((prev) => applyEvChange(prev, stat, value))
+            }
+            moveInputId="pokemon-damage-defender-move"
+            moveValue={defenderMove}
+            onChangeMove={setDefenderMove}
+            moveOptions={defenderMoveComboboxOptions}
+            isMoveDisabled={defenderMoveOptions.length === 0}
+            showDbMissingMoveHint={
+              !defender.isLoading &&
+              Boolean(defender.data) &&
               defenderMoveOptions.length === 0 &&
               !dbMovesError &&
-              dbMoveById.size > 0 ? (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                  이 포켓몬 도감 기술 중 DB(T_POKEMON_MOVE)에 있는 기술이 없습니다.
-                </p>
-              ) : null}
-              <MoveDetailPanel meta={defenderSelectedMoveMeta} />
-              <div className="mt-2 flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <RankSelect
-                    id="pokemon-damage-defender-attack-rank"
-                    label="공격 랭크"
-                    value={defenderAttackRank}
-                    onChange={setDefenderAttackRank}
-                  />
-                  <RankSelect
-                    id="pokemon-damage-defender-special-attack-rank"
-                    label="특공 랭크"
-                    value={defenderSpecialAttackRank}
-                    onChange={setDefenderSpecialAttackRank}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <RankSelect
-                    id="pokemon-damage-defender-defense-rank"
-                    label="방어 랭크"
-                    value={defenderDefenseRank}
-                    onChange={setDefenderDefenseRank}
-                  />
-                  <RankSelect
-                    id="pokemon-damage-defender-special-defense-rank"
-                    label="특방 랭크"
-                    value={defenderSpecialDefenseRank}
-                    onChange={setDefenderSpecialDefenseRank}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+              dbMoveById.size > 0
+            }
+            moveDetail={<MoveDetailPanel meta={defenderSelectedMoveMeta} />}
+            rankIdPrefix="pokemon-damage-defender"
+            attackRank={defenderAttackRank}
+            specialAttackRank={defenderSpecialAttackRank}
+            defenseRank={defenderDefenseRank}
+            specialDefenseRank={defenderSpecialDefenseRank}
+            onAttackRankChange={setDefenderAttackRank}
+            onSpecialAttackRankChange={setDefenderSpecialAttackRank}
+            onDefenseRankChange={setDefenderDefenseRank}
+            onSpecialDefenseRankChange={setDefenderSpecialDefenseRank}
+          />
         </div>
-        <div
-          className={`${box} min-h-[120px] w-full md:min-h-[140px]`}
-          aria-label="결과·요약 영역"
-        >
-          <h3 className={`${baeminJua.className} text-base font-semibold text-neutral-900 dark:text-neutral-100`}>
-            피해량 결과
-          </h3>
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-black/[.08] bg-neutral-50/80 px-3 py-2 text-xs dark:border-white/[.14] dark:bg-neutral-900/60">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-              <input
-                type="checkbox"
-                checked={forceStab}
-                onChange={(e) => setForceStab(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-black/[.2] dark:border-white/[.3]"
-              />
-              자속(강제)
-            </label>
-            <label className="inline-flex cursor-pointer items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-              <input
-                type="checkbox"
-                checked={isCritical}
-                onChange={(e) => setIsCritical(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-black/[.2] dark:border-white/[.3]"
-              />
-              급소
-            </label>
-            {(["sunny", "rain", "sandstorm", "snow"] as WeatherKind[]).map((w) => (
-              <label
-                key={w}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-neutral-700 dark:text-neutral-300"
-              >
-                <input
-                  type="checkbox"
-                  checked={weather === w}
-                  onChange={(e) => {
-                    if (e.target.checked) setWeather(w);
-                    else setWeather("none");
-                  }}
-                  className="h-3.5 w-3.5 rounded border-black/[.2] dark:border-white/[.3]"
-                />
-                {weatherLabel(w)}
-              </label>
-            ))}
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3">
-            <div className="rounded-md border border-black/[.08] bg-neutral-50/80 p-3 dark:border-white/[.14] dark:bg-neutral-900/60">
-              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                때리는 포켓몬 → 맞는 포켓몬
-              </p>
-              {attackerDamageSummary ? (
-                <>
-                  <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">
-                    {attackerDamageSummary.minDamage} ~ {attackerDamageSummary.maxDamage} (
-                    {attackerDamageSummary.minPercent.toFixed(1)}% ~{" "}
-                    {attackerDamageSummary.maxPercent.toFixed(1)}%)
-                  </p>
-                  {attackerDamageSummary.ruleNote ? (
-                    <p className="mt-1 text-[11px] text-violet-700 dark:text-violet-300">
-                      특수 룰: {attackerDamageSummary.ruleNote}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                    자속 x{attackerDamageSummary.stab.toFixed(1)} · 급소 x
-                    {attackerDamageSummary.critical.toFixed(1)} · 날씨 x
-                    {attackerDamageSummary.weather.toFixed(1)}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                  양쪽 포켓몬과 기술(위력/공격형태 포함)을 선택하면 계산됩니다.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <DamageResultCard
+          cardClassName={`${box} min-h-[120px] w-full md:min-h-[140px]`}
+          fontClassName={baeminJua.className}
+          forceStab={forceStab}
+          onChangeForceStab={setForceStab}
+          isCritical={isCritical}
+          onChangeIsCritical={setIsCritical}
+          weather={weather}
+          onChangeWeather={setWeather}
+          attackerDamageSummary={attackerDamageSummary}
+        />
       </div>
     </div>
   );

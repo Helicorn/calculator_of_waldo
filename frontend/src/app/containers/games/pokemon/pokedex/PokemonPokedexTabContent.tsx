@@ -1,9 +1,10 @@
 "use client";
 
-import type { ComponentType } from "react";
+import Image from "next/image";
+import type { ComponentType, CSSProperties } from "react";
 import type { EChartsOption } from "echarts";
 
-import { PokemonNameCombobox } from "../PokemonNameCombobox";
+import { PokemonNameCombobox } from "../components/PokemonNameCombobox";
 
 type PokemonAbilityRow = {
   kind: "일반특성" | "숨은특성";
@@ -29,7 +30,7 @@ type PokemonPokedexTabContentProps = {
   isAbilityLoading: boolean;
   abilityRows: PokemonAbilityRow[];
   moveRows: string[];
-  reactECharts: ComponentType<{ option: EChartsOption; style: { height: number } }>;
+  reactECharts: ComponentType<{ option: EChartsOption; style?: CSSProperties }>;
 };
 
 export function PokemonPokedexTabContent({
@@ -69,9 +70,11 @@ export function PokemonPokedexTabContent({
             <div className="overflow-hidden rounded-md border border-black/[.1] dark:border-white/[.16]">
               <div className="flex h-72 items-center justify-center bg-neutral-200 dark:bg-neutral-800">
                 {pokemonData.sprites?.front_default ? (
-                  <img
+                  <Image
                     src={pokemonData.sprites.front_default}
                     alt={selectedName.trim()}
+                    width={192}
+                    height={192}
                     className="h-48 w-48 object-contain"
                   />
                 ) : (

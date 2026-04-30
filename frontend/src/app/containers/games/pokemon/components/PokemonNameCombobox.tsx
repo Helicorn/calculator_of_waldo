@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { POKEDEX_DROPDOWN_ITEMS } from "./pokemonDropdownItems";
+import { POKEDEX_DROPDOWN_ITEMS } from "../pokemonDropdownItems";
 
 const INPUT_CLASS =
   "pokemon-pokedex-input w-full appearance-none rounded-md border border-black/[.14] bg-white px-3 py-2 pr-9 text-sm text-neutral-900 outline-none transition-colors focus:border-neutral-500 dark:border-white/[.2] dark:bg-neutral-950 dark:text-neutral-100 dark:focus:border-neutral-300";

@@ -7,6 +7,11 @@ const nextConfig = {
         hostname: "ddragon.leagueoflegends.com",
         pathname: "/cdn/**",
       },
+      {
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/PokeAPI/sprites/**",
+      },
     ],
   },
 };
