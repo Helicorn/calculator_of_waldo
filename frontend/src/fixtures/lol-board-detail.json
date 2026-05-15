@@ -1,0 +1,35 @@
+{
+  "board": {
+    "boardId": 1,
+    "userNo": 1,
+    "authorAccount": "test_user",
+    "title": "테스트입니다.",
+    "content": "테스트입니다.",
+    "viewCnt": 12,
+    "commentCnt": 2,
+    "createdAt": "2026-05-15T10:00:00",
+    "updatedAt": null
+  },
+  "comments": [
+    {
+      "commentId": 1,
+      "boardId": 1,
+      "userNo": 1,
+      "authorAccount": "test_user",
+      "parentCommentId": null,
+      "content": "테스트 댓글입니다.",
+      "createdAt": "2026-05-15T10:05:00",
+      "updatedAt": null
+    },
+    {
+      "commentId": 2,
+      "boardId": 1,
+      "userNo": 1,
+      "authorAccount": "commenter_02",
+      "parentCommentId": null,
+      "content": "테스트 댓글입니다.",
+      "createdAt": "2026-05-15T11:20:00",
+      "updatedAt": null
+    }
+  ]
+}

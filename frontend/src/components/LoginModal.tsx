@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef } from "react";
 
 import { LoginForm } from "@/app/containers/user/login/LoginForm";
+import { ModalShell } from "@/components/ModalShell";
 
 type LoginModalProps = {
   open: boolean;
@@ -16,41 +17,20 @@ export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     panelRef.current?.querySelector<HTMLInputElement>("input")?.focus();
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [open]);
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="presentation"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/50 dark:bg-black/60 border-0 cursor-default w-full h-full"
-        aria-label="닫기"
-        onClick={onClose}
-      />
+    <ModalShell open={open} onClose={onClose}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-md rounded-xl border border-black/[.08] dark:border-white/[.145] bg-white dark:bg-neutral-950 shadow-lg px-6 py-5"
+        className="relative w-full max-w-md rounded-xl border border-black/[.08] bg-white px-6 py-5 shadow-lg dark:border-white/[.145] dark:bg-neutral-950"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 mb-5">
+        <div className="mb-5 flex items-start justify-between gap-3">
           <h2
             id={titleId}
             className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
@@ -60,7 +40,7 @@ export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md p-1 text-neutral-500 hover:bg-black/[.06] dark:hover:bg-white/[.08] dark:text-neutral-400"
+            className="shrink-0 rounded-md p-1 text-neutral-500 hover:bg-black/[.06] dark:text-neutral-400 dark:hover:bg-white/[.08]"
             aria-label="닫기"
           >
             <span className="text-xl leading-none" aria-hidden>
@@ -74,6 +54,6 @@ export function LoginModal({ open, onClose, onLoggedIn }: LoginModalProps) {
           }}
         />
       </div>
-    </div>
+    </ModalShell>
   );
 }

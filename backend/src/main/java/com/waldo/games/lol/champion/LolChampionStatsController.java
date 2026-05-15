@@ -1,4 +1,4 @@
-package com.waldo.games.lol;
+package com.waldo.games.lol.champion;
 
 import java.util.List;
 
@@ -9,13 +9,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * LoL 챔피언 통계 조회 API.
+ *
+ * <p>예: {@code GET /api/waldo/games/lol/champions/{championId}/stats}
+ */
 @RestController
 @RequestMapping("/api/waldo/games/lol")
-public class LolGamesController {
+public class LolChampionStatsController {
 
     private final LolChampionStatsQueryRepository championStatsQueryRepository;
 
-    public LolGamesController(LolChampionStatsQueryRepository championStatsQueryRepository) {
+    public LolChampionStatsController(LolChampionStatsQueryRepository championStatsQueryRepository) {
         this.championStatsQueryRepository = championStatsQueryRepository;
     }
 

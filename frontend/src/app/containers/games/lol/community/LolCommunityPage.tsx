@@ -5,9 +5,6 @@ export function LolCommunityPage() {
   return (
     <div className="flex w-full max-w-3xl flex-col gap-6 text-left">
       <header>
-        <h2 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          커뮤니티
-        </h2>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
           Riot Games 공식 개발자 포털에서 League of Legends를 비롯한 게임 API
           목록과 문서를 확인할 수 있습니다.

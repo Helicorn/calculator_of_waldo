@@ -162,6 +162,8 @@ npm run build
 - **T_POKEMON_MOVE**: 포켓몬 기술목록 테이블
 - **T_POKEMON_ABILITY**: 포켓몬 특성목록 테이블
 - **LOL_CHAMPION_STATS**: 리그오브레전드 챔피언 통계 조회 테이블
+- **LOL_BOARD**: 리그 오브 레전드 자유게시판 게시글 (`T_USER` FK)
+- **LOL_BOARD_COMMENT**: 자유게시판 댓글 (`LOL_BOARD`, `T_USER` FK, 대댓글용 `PARENT_COMMENT_ID`)
 
 ### ERD
 

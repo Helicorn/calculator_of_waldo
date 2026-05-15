@@ -43,7 +43,7 @@ export function GamePageLayout({
             />
             <div className="min-w-0 flex-1 flex flex-col gap-3">
               {activeLabel ? (
-                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                <p className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
                   {activeLabel}
                   {activeDetailSuffix ? (
                     <>

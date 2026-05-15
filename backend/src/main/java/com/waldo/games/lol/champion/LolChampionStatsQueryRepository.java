@@ -1,4 +1,4 @@
-package com.waldo.games.lol;
+package com.waldo.games.lol.champion;
 
 import java.math.BigDecimal;
 import java.util.List;

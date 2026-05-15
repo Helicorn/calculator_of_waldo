@@ -1,0 +1,119 @@
+{
+  "content": [
+    {
+      "boardId": 12,
+      "userNo": 1,
+      "title": "페이징 테스트 12번째 글",
+      "viewCnt": 3,
+      "commentCnt": 0,
+      "createdAt": "2026-05-15T12:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 11,
+      "userNo": 1,
+      "title": "페이징 테스트 11번째 글",
+      "viewCnt": 7,
+      "commentCnt": 1,
+      "createdAt": "2026-05-15T11:30:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 10,
+      "userNo": 2,
+      "title": "페이징 테스트 10번째 글",
+      "viewCnt": 15,
+      "commentCnt": 2,
+      "createdAt": "2026-05-15T11:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 9,
+      "userNo": 1,
+      "title": "페이징 테스트 9번째 글",
+      "viewCnt": 4,
+      "commentCnt": 0,
+      "createdAt": "2026-05-15T10:45:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 8,
+      "userNo": 1,
+      "title": "페이징 테스트 8번째 글",
+      "viewCnt": 22,
+      "commentCnt": 3,
+      "createdAt": "2026-05-15T10:30:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 7,
+      "userNo": 2,
+      "title": "페이징 테스트 7번째 글",
+      "viewCnt": 9,
+      "commentCnt": 1,
+      "createdAt": "2026-05-15T10:15:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 6,
+      "userNo": 1,
+      "title": "페이징 테스트 6번째 글",
+      "viewCnt": 1,
+      "commentCnt": 0,
+      "createdAt": "2026-05-15T10:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 5,
+      "userNo": 1,
+      "title": "페이징 테스트 5번째 글",
+      "viewCnt": 18,
+      "commentCnt": 2,
+      "createdAt": "2026-05-14T18:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 4,
+      "userNo": 2,
+      "title": "페이징 테스트 4번째 글",
+      "viewCnt": 6,
+      "commentCnt": 0,
+      "createdAt": "2026-05-14T16:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 3,
+      "userNo": 1,
+      "title": "페이징 테스트 3번째 글",
+      "viewCnt": 0,
+      "commentCnt": 0,
+      "createdAt": "2026-05-13T09:00:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 2,
+      "userNo": 1,
+      "title": "페이징 테스트 2번째 글",
+      "viewCnt": 5,
+      "commentCnt": 1,
+      "createdAt": "2026-05-14T15:30:00",
+      "updatedAt": null
+    },
+    {
+      "boardId": 1,
+      "userNo": 1,
+      "title": "페이징 테스트 1번째 글",
+      "viewCnt": 12,
+      "commentCnt": 2,
+      "createdAt": "2026-05-14T10:00:00",
+      "updatedAt": null
+    }
+  ],
+  "totalElements": 12,
+  "totalPages": 2,
+  "size": 10,
+  "number": 0,
+  "first": true,
+  "last": false,
+  "empty": false
+}

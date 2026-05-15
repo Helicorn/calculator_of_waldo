@@ -26,7 +26,7 @@ export const GAME_DETAIL_ITEMS: Record<GameSlug, GameDetailItem[]> = {
   lol: [
     { id: "champions", label: "챔피언 정보" },
     { id: "patch", label: "패치 노트" },
-    { id: "esports", label: "e스포츠" },
+    { id: "free-board", label: "자유게시판" },
     { id: "community", label: "커뮤니티" },
     { id: "history", label: "전적 검색" },
   ],

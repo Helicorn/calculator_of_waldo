@@ -8,6 +8,7 @@ import {
 } from "@/app/containers/games/gameCategories";
 import { GamePageLayout } from "@/app/containers/games/GamePageLayout";
 import { LolChampionsTab } from "@/app/containers/games/lol/champions/LolChampionsTab";
+import { LolFreeBoardPage } from "@/app/containers/games/lol/board";
 import { LolCommunityPage } from "@/app/containers/games/lol/community";
 import { MatchHistorySearchPage } from "@/app/containers/games/lol/history";
 import {
@@ -45,6 +46,8 @@ export default async function GameCategoryPage({
   const lolDetailContent =
     params.slug === "lol" && activeDetailId === "champions" ? (
       <LolChampionsTab />
+    ) : params.slug === "lol" && activeDetailId === "free-board" ? (
+      <LolFreeBoardPage />
     ) : params.slug === "lol" && activeDetailId === "community" ? (
       <LolCommunityPage />
     ) : params.slug === "lol" && activeDetailId === "history" ? (
