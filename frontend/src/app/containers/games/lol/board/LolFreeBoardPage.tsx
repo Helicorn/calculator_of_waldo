@@ -4,15 +4,56 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  BoardListDeleteModal,
+  type BoardListDeleteModalVariant,
+} from "@/app/containers/games/lol/board/BoardListDeleteModal";
 import { BoardWriteLoginPromptModal } from "@/app/containers/games/lol/board/BoardWriteLoginPromptModal";
 import boardListFixture from "@/fixtures/lol-board-list.json";
 import {
   formatBoardDateTime,
+  isAuthorityZero,
   lolBoardDetailHref,
   lolBoardWriteHref,
 } from "@/app/containers/games/lol/board/lolBoardUtils";
 import type { BoardPageResponse, BoardSummary } from "@/app/containers/games/lol/board/lolBoardTypes";
 import { BOARD_LIST_PAGE_SIZE } from "@/app/containers/games/lol/board/lolBoardTypes";
+import {
+  lolBoardListAdminSelectColumnClass,
+  lolBoardListAdminSelectHeaderClass,
+  lolBoardListBoardIdCellClass,
+  lolBoardListCheckboxInputClass,
+  lolBoardListDeleteButtonClass,
+  lolBoardListDividerUlClass,
+  lolBoardListErrorTextClass,
+  lolBoardListFooterActionsClass,
+  lolBoardListFooterBarClass,
+  lolBoardListFooterPaginationWrapClass,
+  lolBoardListHeadBadgeClass,
+  lolBoardListHeaderRowClass,
+  lolBoardListLiRowClass,
+  lolBoardListLoadingTextClass,
+  lolBoardListMetaCellCenterClass,
+  lolBoardListMetaCellRightClass,
+  lolBoardListNoticeBadgeClass,
+  lolBoardListPaginationActiveClass,
+  lolBoardListPaginationDisabledClass,
+  lolBoardListPaginationEllipsisClass,
+  lolBoardListPaginationIdleClass,
+  lolBoardListPaginationItemClass,
+  lolBoardListPaginationNavClass,
+  lolBoardListPaginationPageGroupClass,
+  lolBoardListRowGridClass,
+  lolBoardListRowLinkClass,
+  lolBoardListRowLinkFlexClass,
+  lolBoardListRowWithSelectClass,
+  lolBoardListSummaryFixtureHighlightClass,
+  lolBoardListSummaryTextClass,
+  lolBoardListTableShellClass,
+  lolBoardListTitleRowClass,
+  lolBoardListTitleTextClass,
+  lolBoardListWriteButtonClass,
+} from "@/app/containers/games/lol/board/lolBoardUiClasses";
 import type { LoginResponse } from "@/app/types/login";
 import { apiGetJsonIfOk } from "@/lib/apiFetch";
 import { BACKEND_BASE_URL } from "@/lib/backendBaseUrl";
@@ -20,19 +61,73 @@ import { LoginModal } from "@/components/LoginModal";
 
 const WALDO_LOL_BOARD_URL = `${BACKEND_BASE_URL}/api/waldo/games/lol/board`;
 
-const BOARD_LIST_ROW_GRID =
-  "grid grid-cols-[2.5rem_minmax(0,1fr)_6.5rem_3.25rem_3.25rem] items-center gap-2 px-4 sm:grid-cols-[3rem_minmax(0,1fr)_8.5rem_4rem_4rem] sm:gap-3";
+function normalizeBoardSummary(row: Partial<BoardSummary>): BoardSummary {
+  return {
+    boardId: Number(row.boardId),
+    userNo: Number(row.userNo ?? 0),
+    title: String(row.title ?? ""),
+    viewCnt: Number(row.viewCnt ?? 0),
+    commentCnt: Number(row.commentCnt ?? 0),
+    noticeYn: Boolean(row.noticeYn),
+    headId: row.headId ?? null,
+    headLabel: row.headLabel ?? null,
+    createdAt: String(row.createdAt ?? ""),
+    updatedAt: row.updatedAt ?? null,
+  };
+}
 
+/** API 또는 레거시 fixture(`pinnedNotices` 없음) 응답을 목록 표시용 형태로 맞춤 */
 function normalizePageResponse(body: Partial<BoardPageResponse>): BoardPageResponse {
-  const content = body.content ?? [];
-  const totalElements = body.totalElements ?? content.length;
+  const hasPinnedField =
+    Object.prototype.hasOwnProperty.call(body, "pinnedNotices") &&
+    body.pinnedNotices !== undefined;
+
+  let pinned: BoardSummary[] = hasPinnedField
+    ? (body.pinnedNotices ?? []).map(normalizeBoardSummary)
+    : [];
+
+  let content: BoardSummary[] = (body.content ?? []).map(normalizeBoardSummary);
+
+  if (!hasPinnedField) {
+    pinned = content.filter((r) => r.noticeYn);
+    content = content.filter((r) => !r.noticeYn);
+  }
+
   const size = body.size ?? BOARD_LIST_PAGE_SIZE;
+
+  const totalElements =
+    body.totalElements !== undefined
+      ? Number(body.totalElements)
+      : pinned.length + content.length;
+
+  const pinnedLen = pinned.length;
+  const regularTotal =
+    body.totalElements !== undefined
+      ? Math.max(0, totalElements - pinnedLen)
+      : content.length;
+
   const totalPages = Math.max(
     1,
-    body.totalPages ?? (Math.ceil(totalElements / size) || 1),
+    body.totalPages !== undefined
+      ? Number(body.totalPages)
+      : Math.ceil(regularTotal / size) || 1,
   );
-  const number = Math.min(Math.max(0, body.number ?? 0), totalPages - 1);
-  return { content, totalElements, totalPages, number, size };
+
+  const number = Math.min(Math.max(0, body.number ?? 0), Math.max(0, totalPages - 1));
+
+  return {
+    pinnedNotices: pinned,
+    content,
+    totalElements,
+    totalPages,
+    number,
+    size,
+  };
+}
+
+/** 목록 표시: 모든 공지 + 해당 페이지 일반글 */
+function mergePinnedAndPage(body: BoardPageResponse): BoardSummary[] {
+  return [...body.pinnedNotices, ...body.content];
 }
 
 function buildPageIndexes(currentPage: number, totalPages: number): number[] {
@@ -57,23 +152,15 @@ function BoardListPagination({
   onPageChange,
 }: BoardListPaginationProps) {
   const pageIndexes = buildPageIndexes(page, totalPages);
-  const itemClass =
-    "inline-flex min-h-8 min-w-8 items-center justify-center rounded border px-2 text-xs tabular-nums transition-colors";
-  const activeClass =
-    "border-neutral-800 bg-neutral-800 font-semibold text-white dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900";
-  const idleClass =
-    "border-neutral-300 text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800/50";
-  const disabledClass =
-    "cursor-not-allowed border-neutral-200 text-neutral-300 dark:border-neutral-700 dark:text-neutral-600";
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-center gap-1"
+      className={lolBoardListPaginationNavClass}
       aria-label="\uAC8C\uC2DC\uD310 \uBAA9\uB85D \uD398\uC774\uC9C0"
     >
       <button
         type="button"
-        className={`${itemClass} ${page <= 0 ? disabledClass : idleClass}`}
+        className={`${lolBoardListPaginationItemClass} ${page <= 0 ? lolBoardListPaginationDisabledClass : lolBoardListPaginationIdleClass}`}
         disabled={page <= 0}
         onClick={() => onPageChange(page - 1)}
         aria-label="\uC774\uC804 \uD398\uC774\uC9C0"
@@ -85,15 +172,15 @@ function BoardListPagination({
         const prev = pageIndexes[index - 1];
         const showEllipsis = prev !== undefined && pageIndex - prev > 1;
         return (
-          <span key={pageIndex} className="flex items-center gap-1">
+          <span key={pageIndex} className={lolBoardListPaginationPageGroupClass}>
             {showEllipsis ? (
-              <span className="px-1 text-xs text-neutral-400 dark:text-neutral-500">
+              <span className={lolBoardListPaginationEllipsisClass}>
                 {"\u2026"}
               </span>
             ) : null}
             <button
               type="button"
-              className={`${itemClass} ${pageIndex === page ? activeClass : idleClass}`}
+              className={`${lolBoardListPaginationItemClass} ${pageIndex === page ? lolBoardListPaginationActiveClass : lolBoardListPaginationIdleClass}`}
               aria-current={pageIndex === page ? "page" : undefined}
               onClick={() => onPageChange(pageIndex)}
             >
@@ -105,7 +192,7 @@ function BoardListPagination({
 
       <button
         type="button"
-        className={`${itemClass} ${page >= totalPages - 1 ? disabledClass : idleClass}`}
+        className={`${lolBoardListPaginationItemClass} ${page >= totalPages - 1 ? lolBoardListPaginationDisabledClass : lolBoardListPaginationIdleClass}`}
         disabled={page >= totalPages - 1}
         onClick={() => onPageChange(page + 1)}
         aria-label="\uB2E4\uC74C \uD398\uC774\uC9C0"
@@ -116,7 +203,7 @@ function BoardListPagination({
   );
 }
 
-/** LoL \uC790\uC720\uAC8C\uC2DC\uD310 \u2014 GamePageLayout `?detail=free-board` \uBCF8\uBB38 */
+/** LoL 자유게시판 — GamePageLayout `?detail=free-board` 본문 */
 export function LolFreeBoardPage() {
   const router = useRouter();
   const [posts, setPosts] = useState<BoardSummary[]>([]);
@@ -131,23 +218,38 @@ export function LolFreeBoardPage() {
   );
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [selectedBoardIds, setSelectedBoardIds] = useState<Set<number>>(() => new Set());
+  const [deleteModalVariant, setDeleteModalVariant] =
+    useState<BoardListDeleteModalVariant | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+
+  const showAdminSelect =
+    sessionUser != null && isAuthorityZero(sessionUser.authority);
 
   useEffect(() => {
     void apiGetJsonIfOk<LoginResponse>("/api/me").then(setSessionUser);
   }, []);
 
   const applyFixture = useCallback((pageIndex: number) => {
-    const fixture = normalizePageResponse(boardListFixture as BoardPageResponse);
-    const size = fixture.size;
-    const all = fixture.content ?? [];
-    const totalElements = fixture.totalElements ?? all.length;
-    const totalPages = fixture.totalPages;
-    const page = Math.min(Math.max(0, pageIndex), totalPages - 1);
-    const start = page * size;
-    setPosts(all.slice(start, start + size));
+    const normalized = normalizePageResponse(boardListFixture as unknown as Partial<BoardPageResponse>);
+    const size = normalized.size;
+    const pinnedSorted = [...normalized.pinnedNotices].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const regularSorted = [...normalized.content].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const totalElements = normalized.totalElements;
+    const pinnedLen = pinnedSorted.length;
+    const regularTotal = Math.max(0, totalElements - pinnedLen);
+    const totalPages = Math.max(1, Math.ceil(regularTotal / size) || 1);
+    const pageNum = Math.min(Math.max(0, pageIndex), totalPages - 1);
+    const start = pageNum * size;
+    const pageRegular = regularSorted.slice(start, start + size);
+    setPosts([...pinnedSorted, ...pageRegular]);
     setTotalCount(totalElements);
     setTotalPages(totalPages);
-    setPage(page);
+    setPage(pageNum);
     setUsingFixture(true);
     setError(null);
   }, []);
@@ -169,15 +271,15 @@ export function LolFreeBoardPage() {
           throw new Error(`HTTP ${response.status}`);
         }
         const body = normalizePageResponse(
-          (await response.json()) as BoardPageResponse,
+          (await response.json()) as Partial<BoardPageResponse>,
         );
         if (signal.aborted) {
           return;
         }
-        if (body.content.length === 0 && body.totalElements === 0) {
+        if (body.totalElements === 0) {
           applyFixture(pageIndex);
         } else {
-          setPosts(body.content);
+          setPosts(mergePinnedAndPage(body));
           setTotalCount(body.totalElements);
           setTotalPages(body.totalPages);
           setPage(body.number);
@@ -229,6 +331,64 @@ export function LolFreeBoardPage() {
     router.push(lolBoardWriteHref());
   }, [router]);
 
+  const toggleBoardSelection = useCallback((boardId: number, checked: boolean) => {
+    setSelectedBoardIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(boardId);
+      } else {
+        next.delete(boardId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleDeleteClick = useCallback(() => {
+    if (selectedBoardIds.size === 0) {
+      setDeleteModalVariant("no-selection");
+    } else {
+      setDeleteModalVariant("confirm");
+    }
+  }, [selectedBoardIds.size]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (usingFixture) {
+      setDeleteModalVariant(null);
+      setError("테스트 데이터에서는 삭제할 수 없습니다.");
+      return;
+    }
+    const ids = Array.from(selectedBoardIds);
+    if (ids.length === 0) {
+      setDeleteModalVariant(null);
+      return;
+    }
+    setDeletePending(true);
+    try {
+      const results = await Promise.all(
+        ids.map((boardId) =>
+          fetch(`${WALDO_LOL_BOARD_URL}/${boardId}`, {
+            method: "DELETE",
+            credentials: "include",
+          }),
+        ),
+      );
+      const failed = results.filter((res) => !res.ok);
+      if (failed.length > 0) {
+        setError(`삭제에 실패한 글이 ${failed.length}건 있습니다.`);
+      } else {
+        setError(null);
+      }
+      setSelectedBoardIds(new Set());
+      setDeleteModalVariant(null);
+      const controller = new AbortController();
+      void loadPosts(page, controller.signal);
+    } catch {
+      setError("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDeletePending(false);
+    }
+  }, [usingFixture, selectedBoardIds, page, loadPosts]);
+
   const emptyMessage = "\uB4F1\uB85D\uB41C \uAE00\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.";
   const fixtureNotice =
     "(DB\uC5D0 \uAE00\uC774 \uC5C6\uC5B4 \uC608\uC2DC JSON\uC744 \uD45C\uC2DC\uD569\uB2C8\uB2E4)";
@@ -246,82 +406,156 @@ export function LolFreeBoardPage() {
         onClose={() => setLoginPromptOpen(false)}
         onConfirmLogin={() => setLoginModalOpen(true)}
       />
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <BoardListDeleteModal
+        open={deleteModalVariant != null}
+        variant={deleteModalVariant ?? "no-selection"}
+        pending={deletePending}
+        onClose={() => {
+          if (!deletePending) {
+            setDeleteModalVariant(null);
+          }
+        }}
+        onConfirmDelete={() => void handleConfirmDelete()}
+      />
+      <p className={lolBoardListSummaryTextClass}>
         {totalCount > 0
           ? `\uC804\uCCB4 ${totalCount}\uAC74`
           : emptyMessage}
         {usingFixture ? (
-          <span className="ml-2 text-amber-700 dark:text-amber-400">
+          <span className={lolBoardListSummaryFixtureHighlightClass}>
             {fixtureNotice}
           </span>
         ) : null}
       </p>
 
       {isLoading ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+        <p className={lolBoardListLoadingTextClass}>
           {loadingMessage}
         </p>
       ) : null}
 
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className={lolBoardListErrorTextClass} role="alert">
           {error}
         </p>
       ) : null}
 
       {!isLoading && !error && posts.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-700">
-          <div
-            className={`${BOARD_LIST_ROW_GRID} border-b border-neutral-200 bg-neutral-100 py-2.5 text-center text-xs font-semibold text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400`}
-            aria-hidden
-          >
-            <span>{"\uBC88\uD638"}</span>
-            <span>{"\uC81C\uBAA9"}</span>
-            <span>{"\uC791\uC131\uC77C"}</span>
-            <span>{"\uC870\uD68C\uC218"}</span>
-            <span>{"\uB313\uAE00"}</span>
-          </div>
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
+        <div className={lolBoardListTableShellClass}>
+          {showAdminSelect ? (
+            <div
+              className={`${lolBoardListRowWithSelectClass} border-b border-neutral-200 bg-neutral-100 py-2.5 text-center text-xs font-semibold text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400`}
+              aria-hidden
+            >
+              <span className={lolBoardListAdminSelectHeaderClass} />
+              <div className={`${lolBoardListRowGridClass} ${lolBoardListRowLinkFlexClass}`}>
+                <span>번호</span>
+                <span>제목</span>
+                <span>작성일</span>
+                <span>조회수</span>
+                <span>댓글</span>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`${lolBoardListRowGridClass} ${lolBoardListHeaderRowClass}`}
+              aria-hidden
+            >
+              <span>번호</span>
+              <span>제목</span>
+              <span>작성일</span>
+              <span>조회수</span>
+              <span>댓글</span>
+            </div>
+          )}
+          <ul className={lolBoardListDividerUlClass}>
             {posts.map((post) => (
-              <li key={post.boardId} className="bg-white dark:bg-neutral-900/40">
+              <li
+                key={post.boardId}
+                className={
+                  showAdminSelect
+                    ? `${lolBoardListRowWithSelectClass} ${lolBoardListLiRowClass}`
+                    : lolBoardListLiRowClass
+                }
+              >
+                {showAdminSelect ? (
+                  <span className={lolBoardListAdminSelectColumnClass}>
+                    <input
+                      type="checkbox"
+                      checked={selectedBoardIds.has(post.boardId)}
+                      onChange={(ev) =>
+                        toggleBoardSelection(post.boardId, ev.target.checked)
+                      }
+                      onClick={(ev) => ev.stopPropagation()}
+                      aria-label={`${post.title} 선택`}
+                      className={lolBoardListCheckboxInputClass}
+                    />
+                  </span>
+                ) : null}
                 <Link
                   href={lolBoardDetailHref(post.boardId)}
-                  className={`${BOARD_LIST_ROW_GRID} py-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50`}
+                  className={`${lolBoardListRowGridClass} ${lolBoardListRowLinkClass} ${
+                    showAdminSelect ? lolBoardListRowLinkFlexClass : ""
+                  }`}
                 >
-                  <span className="text-center text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                  <span className={lolBoardListBoardIdCellClass}>
                     {post.boardId}
                   </span>
-                  <span className="truncate text-xs font-medium text-neutral-900 underline-offset-2 hover:underline dark:text-neutral-100">
-                    {post.title}
+                  <span className={lolBoardListTitleRowClass}>
+                    {post.headLabel ? (
+                      <span className={lolBoardListHeadBadgeClass}>
+                        {post.headLabel}
+                      </span>
+                    ) : null}
+                    {post.noticeYn ? (
+                      <span className={lolBoardListNoticeBadgeClass}>
+                        {"\uACF5\uC9C0"}
+                      </span>
+                    ) : null}
+                    <span className={lolBoardListTitleTextClass}>
+                      {post.title}
+                    </span>
                   </span>
-                  <span className="text-right text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                  <span className={lolBoardListMetaCellRightClass}>
                     {formatBoardDateTime(post.createdAt)}
                   </span>
-                  <span className="text-center text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                  <span className={lolBoardListMetaCellCenterClass}>
                     {post.viewCnt}
                   </span>
-                  <span className="text-center text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+                  <span className={lolBoardListMetaCellCenterClass}>
                     {post.commentCnt}
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
-            <div className="flex min-w-0 flex-1 justify-center">
+          <div className={lolBoardListFooterBarClass}>
+            <div className={lolBoardListFooterPaginationWrapClass}>
               <BoardListPagination
                 page={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
               />
             </div>
-            <button
-              type="button"
-              onClick={handleWriteClick}
-              className="inline-flex shrink-0 items-center justify-center rounded border border-neutral-800 bg-neutral-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-900 dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
-            >
-              {"\uAE00\uC4F0\uAE30"}
-            </button>
+            <div className={lolBoardListFooterActionsClass}>
+              {showAdminSelect ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteClick}
+                  disabled={deletePending}
+                  className={lolBoardListDeleteButtonClass}
+                >
+                  삭제
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleWriteClick}
+                className={lolBoardListWriteButtonClass}
+              >
+                글쓰기
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

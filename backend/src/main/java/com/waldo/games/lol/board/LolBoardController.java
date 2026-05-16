@@ -1,6 +1,7 @@
 package com.waldo.games.lol.board;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -40,11 +41,22 @@ public class LolBoardController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<BoardSummaryResponse>> list(
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<BoardSummaryResponse> page = boardService.listBoards(pageable)
-                .map(LolBoardController::toSummary);
-        return ResponseEntity.ok(page);
+    public ResponseEntity<BoardListPageResponse> list(@PageableDefault(size = 20) Pageable pageable) {
+        LolBoardService.BoardListPartition partition = boardService.listBoardsForPage(pageable);
+        List<BoardSummaryResponse> pinned = partition.pinnedNotices().stream()
+                .map(LolBoardController::toSummary)
+                .toList();
+        Page<BoardSummaryResponse> regularPage = partition.regularPage().map(LolBoardController::toSummary);
+        return ResponseEntity.ok(BoardListPageResponse.of(pinned, regularPage));
+    }
+
+    /** 게시글 말머리 목록 (글쓰기 셀렉트 등). {@code /heads}는 {@code /{boardId}} 보다 먼저 매칭되도록 선언합니다. */
+    @GetMapping("/heads")
+    public ResponseEntity<List<BoardHeadResponse>> heads() {
+        List<BoardHeadResponse> rows = boardService.listBoardHeads().stream()
+                .map(h -> new BoardHeadResponse(h.getHeadId(), h.getLabel(), h.getSortOrder()))
+                .toList();
+        return ResponseEntity.ok(rows);
     }
 
     @GetMapping("/{boardId}")
@@ -70,7 +82,12 @@ public class LolBoardController {
         if (isBlank(body.title()) || isBlank(body.content())) {
             return ResponseEntity.badRequest().build();
         }
-        LolBoardEntity saved = boardService.createBoard(user.no(), body.title(), body.content());
+        LolBoardEntity saved = boardService.createBoard(
+                user.no(),
+                body.title(),
+                body.content(),
+                Boolean.TRUE.equals(body.noticeYn()),
+                body.headId());
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 toDetail(saved, boardService.resolveAuthorAccount(saved.getUserNo())));
     }
@@ -84,7 +101,13 @@ public class LolBoardController {
         if (isBlank(body.title()) || isBlank(body.content())) {
             return ResponseEntity.badRequest().build();
         }
-        LolBoardEntity saved = boardService.updateBoard(boardId, user.no(), body.title(), body.content());
+        LolBoardEntity saved = boardService.updateBoard(
+                boardId,
+                user.no(),
+                body.title(),
+                body.content(),
+                body.noticeYn(),
+                body.headId());
         return ResponseEntity.ok(
                 toDetail(saved, boardService.resolveAuthorAccount(saved.getUserNo())));
     }
@@ -92,7 +115,7 @@ public class LolBoardController {
     @DeleteMapping("/{boardId}")
     public ResponseEntity<Void> delete(@PathVariable long boardId, HttpServletRequest request) {
         LoginUserResponse user = requireUser(request);
-        boardService.deleteBoard(boardId, user.no());
+        boardService.deleteBoard(boardId, user);
         return ResponseEntity.noContent().build();
     }
 
@@ -113,6 +136,9 @@ public class LolBoardController {
                 board.getTitle(),
                 board.getViewCnt(),
                 board.getCommentCnt(),
+                "Y".equals(board.getNoticeYn()),
+                headIdOf(board),
+                headLabelOf(board),
                 board.getCreatedAt(),
                 board.getUpdatedAt());
     }
@@ -126,14 +152,63 @@ public class LolBoardController {
                 board.getContent(),
                 board.getViewCnt(),
                 board.getCommentCnt(),
+                "Y".equals(board.getNoticeYn()),
+                headIdOf(board),
+                headLabelOf(board),
                 board.getCreatedAt(),
                 board.getUpdatedAt());
+    }
+
+    private static Long headIdOf(LolBoardEntity board) {
+        return board.getHead() != null ? board.getHead().getHeadId() : null;
+    }
+
+    private static String headLabelOf(LolBoardEntity board) {
+        return board.getHead() != null ? board.getHead().getLabel() : null;
     }
 
     public record BoardNavigationResponse(Long previousBoardId, Long nextBoardId) {
     }
 
-    public record BoardWriteRequest(String title, String content) {
+    /**
+     * {@code pinnedNotices}: 모든 공지(페이지와 무관). {@code content}: 해당 페이지 일반글만.
+     */
+    public record BoardListPageResponse(
+            List<BoardSummaryResponse> pinnedNotices,
+            List<BoardSummaryResponse> content,
+            long totalElements,
+            int totalPages,
+            int number,
+            int size,
+            boolean first,
+            boolean last,
+            boolean empty) {
+
+        public static BoardListPageResponse of(List<BoardSummaryResponse> pinned, Page<BoardSummaryResponse> page) {
+            long totalAll = pinned.size() + page.getTotalElements();
+            int totalPages = page.getTotalPages();
+            if (totalPages < 1) {
+                totalPages = 1;
+            }
+            boolean entirelyEmpty = pinned.isEmpty() && page.isEmpty();
+            return new BoardListPageResponse(
+                    pinned,
+                    page.getContent(),
+                    totalAll,
+                    totalPages,
+                    page.getNumber(),
+                    page.getSize(),
+                    page.isFirst(),
+                    page.isLast(),
+                    entirelyEmpty);
+        }
+    }
+
+    public record BoardHeadResponse(Long headId, String label, int sortOrder) {
+    }
+
+    /** 수정 시 {@code headId} 생략/null은 말머리 없음으로 적용됩니다. 클라이언트는 기존 값을 유지할 때도 명시하는 것을 권장합니다. */
+    public record BoardWriteRequest(String title, String content, Boolean noticeYn, Long headId) {
     }
 
     public record BoardSummaryResponse(
@@ -142,6 +217,9 @@ public class LolBoardController {
             String title,
             int viewCnt,
             int commentCnt,
+            boolean noticeYn,
+            Long headId,
+            String headLabel,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
     }
@@ -154,6 +232,9 @@ public class LolBoardController {
             String content,
             int viewCnt,
             int commentCnt,
+            boolean noticeYn,
+            Long headId,
+            String headLabel,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
     }

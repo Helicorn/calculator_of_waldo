@@ -7,6 +7,9 @@
     "content": "테스트입니다.",
     "viewCnt": 12,
     "commentCnt": 2,
+    "noticeYn": false,
+    "headId": 1,
+    "headLabel": "일반",
     "createdAt": "2026-05-15T10:00:00",
     "updatedAt": null
   },

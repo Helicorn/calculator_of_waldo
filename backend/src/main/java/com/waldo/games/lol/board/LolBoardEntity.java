@@ -4,10 +4,13 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -37,6 +40,13 @@ public class LolBoardEntity {
     @Column(name = "COMMENT_CNT", nullable = false)
     private int commentCnt;
 
+    @Column(name = "NOTICE_YN", nullable = false, length = 1)
+    private String noticeYn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "HEAD_ID")
+    private LolBoardHeadEntity head;
+
     @Column(name = "DEL_YN", nullable = false, length = 1)
     private String delYn;
 
@@ -54,6 +64,9 @@ public class LolBoardEntity {
         }
         if (delYn == null) {
             delYn = "N";
+        }
+        if (noticeYn == null) {
+            noticeYn = "N";
         }
     }
 
@@ -108,6 +121,22 @@ public class LolBoardEntity {
 
     public void setCommentCnt(int commentCnt) {
         this.commentCnt = commentCnt;
+    }
+
+    public String getNoticeYn() {
+        return noticeYn;
+    }
+
+    public void setNoticeYn(String noticeYn) {
+        this.noticeYn = noticeYn;
+    }
+
+    public LolBoardHeadEntity getHead() {
+        return head;
+    }
+
+    public void setHead(LolBoardHeadEntity head) {
+        this.head = head;
     }
 
     public String getDelYn() {

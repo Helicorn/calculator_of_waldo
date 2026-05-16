@@ -1,3 +1,8 @@
+/** {@code t_user.authority} 가 {@code "0"} 인 관리자 계정 */
+export function isAuthorityZero(authority: string | undefined | null): boolean {
+  return authority != null && authority.trim() === "0";
+}
+
 export function formatBoardDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {

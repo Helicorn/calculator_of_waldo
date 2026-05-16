@@ -21,6 +21,9 @@ export function resolveFixtureBoardDetail(boardId: number): {
     content: template.content,
     viewCnt: summary.viewCnt,
     commentCnt: summary.commentCnt,
+    noticeYn: summary.noticeYn ?? false,
+    headId: summary.headId ?? null,
+    headLabel: summary.headLabel ?? null,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
   };

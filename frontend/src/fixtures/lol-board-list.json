@@ -3,9 +3,12 @@
     {
       "boardId": 12,
       "userNo": 1,
-      "title": "페이징 테스트 12번째 글",
+      "title": "베인은 0킬0데스보다 3킬5데스 베인이 좋습니다.",
       "viewCnt": 3,
       "commentCnt": 0,
+      "noticeYn": true,
+      "headId": 1,
+      "headLabel": "일반",
       "createdAt": "2026-05-15T12:00:00",
       "updatedAt": null
     },

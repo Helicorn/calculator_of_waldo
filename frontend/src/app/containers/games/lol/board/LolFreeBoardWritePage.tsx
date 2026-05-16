@@ -7,7 +7,15 @@ import { useRouter } from "next/navigation";
 import { BoardArticleFrame } from "@/app/containers/games/lol/board/BoardArticleFrame";
 import { GAME_TITLE_BY_SLUG } from "@/app/containers/games/gameCategories";
 import { GamePageLayout } from "@/app/containers/games/GamePageLayout";
-import type { BoardDetail } from "@/app/containers/games/lol/board/lolBoardTypes";
+import type { BoardDetail, BoardHeadRow } from "@/app/containers/games/lol/board/lolBoardTypes";
+import {
+  lolBoardWriteBodyTextareaClass,
+  lolBoardWriteCancelLinkClass,
+  lolBoardWriteHeadSelectClass,
+  lolBoardWriteNoticeCheckboxClass,
+  lolBoardWriteSubmitButtonClass,
+  lolBoardWriteTitleInputClass,
+} from "@/app/containers/games/lol/board/lolBoardUiClasses";
 import {
   lolBoardDetailHref,
   lolFreeBoardListHref,
@@ -17,12 +25,7 @@ import { apiGetJsonIfOk } from "@/lib/apiFetch";
 import { BACKEND_BASE_URL } from "@/lib/backendBaseUrl";
 
 const WALDO_LOL_BOARD_POST_URL = `${BACKEND_BASE_URL}/api/waldo/games/lol/board`;
-
-const titleInputClass =
-  "w-full bg-transparent text-base font-semibold leading-snug text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100 dark:placeholder:text-neutral-500";
-
-const bodyTextareaClass =
-  "min-h-[12rem] w-full flex-1 resize-y whitespace-pre-wrap bg-transparent px-0 py-0 text-sm leading-relaxed text-neutral-800 outline-none placeholder:text-neutral-400 dark:text-neutral-200 dark:placeholder:text-neutral-500";
+const WALDO_LOL_BOARD_HEADS_URL = `${BACKEND_BASE_URL}/api/waldo/games/lol/board/heads`;
 
 function resolveAuthorLabel(me: LoginResponse | null): string {
   if (!me) {
@@ -48,12 +51,29 @@ export function LolFreeBoardWritePage() {
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [noticeYn, setNoticeYn] = useState(false);
+  const [boardHeads, setBoardHeads] = useState<BoardHeadRow[]>([]);
+  const [headIdStr, setHeadIdStr] = useState("");
 
   useEffect(() => {
     void apiGetJsonIfOk<LoginResponse>("/api/me").then((user) => {
       setMe(user);
       setMeChecked(true);
     });
+  }, []);
+
+  useEffect(() => {
+    void fetch(WALDO_LOL_BOARD_HEADS_URL, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        if (!res.ok) return [];
+        return (await res.json()) as BoardHeadRow[];
+      })
+      .then(setBoardHeads)
+      .catch(() => setBoardHeads([]));
   }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -65,6 +85,12 @@ export function LolFreeBoardWritePage() {
       setError("제목과 본문을 입력해 주세요.");
       return;
     }
+    const headId =
+      headIdStr === "" ? null : Number.parseInt(headIdStr, 10);
+    if (headIdStr !== "" && !Number.isFinite(headId)) {
+      setError("말머리를 확인해 주세요.");
+      return;
+    }
     setPending(true);
     try {
       const response = await fetch(WALDO_LOL_BOARD_POST_URL, {
@@ -74,7 +100,7 @@ export function LolFreeBoardWritePage() {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title: t, content: c }),
+        body: JSON.stringify({ title: t, content: c, noticeYn, headId }),
       });
       if (response.status === 401) {
         setError("로그인이 필요합니다.");
@@ -132,6 +158,35 @@ export function LolFreeBoardWritePage() {
         ) : null}
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="lol-board-write-head" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              말머리
+            </label>
+            <select
+              id="lol-board-write-head"
+              value={headIdStr}
+              onChange={(ev) => setHeadIdStr(ev.target.value)}
+              disabled={pending || !me}
+              className={lolBoardWriteHeadSelectClass}
+            >
+              <option value="">선택 안 함</option>
+              {boardHeads.map((h) => (
+                <option key={h.headId} value={String(h.headId)}>
+                  {h.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={noticeYn}
+              onChange={(ev) => setNoticeYn(ev.target.checked)}
+              disabled={pending || !me}
+              className={lolBoardWriteNoticeCheckboxClass}
+            />
+            공지로 등록
+          </label>
           <BoardArticleFrame
             topMeta="새 글 작성"
             header={
@@ -145,7 +200,7 @@ export function LolFreeBoardWritePage() {
                   type="text"
                   value={title}
                   onChange={(ev) => setTitle(ev.target.value)}
-                  className={titleInputClass}
+                  className={lolBoardWriteTitleInputClass}
                   placeholder="제목"
                   maxLength={500}
                   autoComplete="off"
@@ -154,10 +209,7 @@ export function LolFreeBoardWritePage() {
               </>
             }
             metaRow={
-              <>
-                <span className="font-medium text-neutral-800 dark:text-neutral-200">{authorLabel}</span>
-                <span className="shrink-0 tabular-nums">조회 0</span>
-              </>
+              <span className="font-medium text-neutral-800 dark:text-neutral-200">{authorLabel}</span>
             }
             body={
               <>
@@ -169,7 +221,7 @@ export function LolFreeBoardWritePage() {
                   name="content"
                   value={content}
                   onChange={(ev) => setContent(ev.target.value)}
-                  className={bodyTextareaClass}
+                  className={lolBoardWriteBodyTextareaClass}
                   placeholder="내용을 입력하세요."
                   rows={12}
                   disabled={pending || !me}
@@ -187,14 +239,14 @@ export function LolFreeBoardWritePage() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Link
               href={lolFreeBoardListHref()}
-              className="inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800/50"
+              className={lolBoardWriteCancelLinkClass}
             >
               취소
             </Link>
             <button
               type="submit"
               disabled={pending || !me}
-              className="inline-flex items-center justify-center rounded-md border border-neutral-800 bg-neutral-800 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
+              className={lolBoardWriteSubmitButtonClass}
             >
               {pending ? "등록 중…" : "등록"}
             </button>

@@ -1,9 +1,18 @@
+export type BoardHeadRow = {
+  headId: number;
+  label: string;
+  sortOrder: number;
+};
+
 export type BoardSummary = {
   boardId: number;
   userNo: number;
   title: string;
   viewCnt: number;
   commentCnt: number;
+  noticeYn: boolean;
+  headId: number | null;
+  headLabel: string | null;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -25,6 +34,7 @@ export type BoardComment = {
 };
 
 export type BoardPageResponse = {
+  pinnedNotices: BoardSummary[];
   content: BoardSummary[];
   totalElements: number;
   totalPages: number;
