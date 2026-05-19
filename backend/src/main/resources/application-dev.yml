@@ -15,3 +15,8 @@ spring:
       hibernate:
         format_sql: true
         default_schema: PUBLIC
+
+# 오버워치 career URL·HTTP 추적 (서버 콘솔)
+logging:
+  level:
+    com.waldo.games.overwatch: DEBUG
