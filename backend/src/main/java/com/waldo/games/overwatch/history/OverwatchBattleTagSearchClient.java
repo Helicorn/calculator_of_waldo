@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.waldo.games.overwatch.OverwatchHttpFetchResult;
+import com.waldo.games.overwatch.OverwatchHttpFetcher;
 
 @Component
 class OverwatchBattleTagSearchClient {

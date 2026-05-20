@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 /**
  * career URL만 Blizzard에 요청해 응답을 검증합니다. HTML 파싱은 하지 않습니다.

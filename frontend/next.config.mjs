@@ -12,6 +12,16 @@ const nextConfig = {
         hostname: "raw.githubusercontent.com",
         pathname: "/PokeAPI/sprites/**",
       },
+      {
+        protocol: "https",
+        hostname: "d15f34w2p8l1cc.cloudfront.net",
+        pathname: "/overwatch/**",
+      },
+      {
+        protocol: "https",
+        hostname: "blz-contentstack-images.akamaized.net",
+        pathname: "/v3/assets/**",
+      },
     ],
   },
 };

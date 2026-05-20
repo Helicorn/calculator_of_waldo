@@ -20,3 +20,5 @@ spring:
 logging:
   level:
     com.waldo.games.overwatch: DEBUG
+    com.waldo.games.overwatch.history: DEBUG
+    com.waldo.games.overwatch.catalogs: DEBUG

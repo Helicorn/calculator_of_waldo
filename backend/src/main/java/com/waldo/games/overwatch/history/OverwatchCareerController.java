@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -16,6 +16,7 @@ import {
   PokemonDamageCalcPage,
   PokemonPokedexPage,
 } from "@/app/containers/games/pokemon";
+import { OverwatchHeroesTab } from "@/app/containers/games/overwatch/catalogs";
 import { OverwatchCareerSearchPage } from "@/app/containers/games/overwatch/history";
 
 export function generateStaticParams() {
@@ -55,6 +56,8 @@ export default async function GameCategoryPage({
       <MatchHistorySearchPage />
     ) : params.slug === "overwatch" && activeDetailId === "history" ? (
       <OverwatchCareerSearchPage />
+    ) : params.slug === "overwatch" && activeDetailId === "heroes" ? (
+      <OverwatchHeroesTab />
     ) : params.slug === "pokemon" && activeDetailId === "pokedex" ? (
       <PokemonPokedexPage />
     ) : params.slug === "pokemon" && activeDetailId === "ability" ? (

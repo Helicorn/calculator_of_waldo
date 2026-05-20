@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 import java.util.ArrayList;
 import java.util.List;

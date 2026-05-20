@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 /** {@code debug=true} 일 때만 응답에 포함되는 URL·HTTP·파싱·원본 JSON. */
 public record OverwatchCareerDebug(

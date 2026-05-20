@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 /** 배틀태그·URL·프로필 ID 입력을 career 경로용 프로필 키로 바꾼 결과. */
 record OverwatchProfileResolution(

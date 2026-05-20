@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
-class OverwatchHttpFetcher {
+public class OverwatchHttpFetcher {
 
     private static final Logger log = LoggerFactory.getLogger(OverwatchHttpFetcher.class);
 
@@ -23,6 +23,7 @@ class OverwatchHttpFetcher {
 
     private static final String REFERER_SEARCH = "https://overwatch.blizzard.com/ko-kr/search/";
     private static final String REFERER_CAREER = "https://overwatch.blizzard.com/ko-kr/career/";
+    private static final String REFERER_HEROES = "https://overwatch.blizzard.com/ko-kr/heroes/";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -33,15 +34,19 @@ class OverwatchHttpFetcher {
         return fetch(url).body();
     }
 
-    OverwatchHttpFetchResult fetchForSearch(String url) {
+    public OverwatchHttpFetchResult fetchForSearch(String url) {
         return fetch(url, REFERER_SEARCH);
     }
 
-    OverwatchHttpFetchResult fetchForCareer(String url) {
+    public OverwatchHttpFetchResult fetchForCareer(String url) {
         return fetch(url, REFERER_CAREER);
     }
 
-    OverwatchHttpFetchResult fetch(String url) {
+    public OverwatchHttpFetchResult fetchForHeroes(String url) {
+        return fetch(url, REFERER_HEROES);
+    }
+
+    public OverwatchHttpFetchResult fetch(String url) {
         return fetch(url, REFERER_CAREER);
     }
 

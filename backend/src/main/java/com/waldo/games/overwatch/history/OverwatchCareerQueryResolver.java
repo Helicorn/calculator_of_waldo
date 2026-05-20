@@ -1,4 +1,4 @@
-package com.waldo.games.overwatch;
+package com.waldo.games.overwatch.history;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
