@@ -22,6 +22,11 @@ const nextConfig = {
         hostname: "blz-contentstack-images.akamaized.net",
         pathname: "/v3/assets/**",
       },
+      {
+        protocol: "https",
+        hostname: "static.playoverwatch.com",
+        pathname: "/img/icons/**",
+      },
     ],
   },
 };

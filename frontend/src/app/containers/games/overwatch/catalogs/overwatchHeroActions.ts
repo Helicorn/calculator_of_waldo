@@ -2,6 +2,7 @@ import type {
   OverwatchHeroDetailResponse,
   OverwatchHeroListResponse,
 } from "@/app/containers/games/overwatch/catalogs/overwatchHeroTypes";
+import { mergeHeroAbilityOverrides } from "@/lib/overwatch/mergeHeroAbilityOverrides";
 import { BACKEND_BASE_URL } from "@/lib/backendBaseUrl";
 
 const HEROES_API = `${BACKEND_BASE_URL}/api/waldo/games/overwatch/heroes`;
@@ -29,5 +30,6 @@ export async function fetchOverwatchHeroDetail(
   if (!res.ok) {
     throw new Error(`영웅 상세 조회 실패 (HTTP ${res.status})`);
   }
-  return res.json() as Promise<OverwatchHeroDetailResponse>;
+  const hero = (await res.json()) as OverwatchHeroDetailResponse;
+  return mergeHeroAbilityOverrides(hero);
 }

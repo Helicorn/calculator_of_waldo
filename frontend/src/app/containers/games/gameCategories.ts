@@ -31,10 +31,9 @@ export const GAME_DETAIL_ITEMS: Record<GameSlug, GameDetailItem[]> = {
     { id: "history", label: "전적 검색" },
   ],
   overwatch: [
-    { id: "overview", label: "개요" },
     { id: "history", label: "전적 검색" },
     { id: "heroes", label: "영웅" },
-    { id: "season", label: "시즌" },
+    { id: "free-board", label: "자유게시판" },
     { id: "news", label: "뉴스" },
   ],
   wow: [

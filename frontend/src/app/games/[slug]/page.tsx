@@ -16,6 +16,7 @@ import {
   PokemonDamageCalcPage,
   PokemonPokedexPage,
 } from "@/app/containers/games/pokemon";
+import { OverwatchFreeBoardPage } from "@/app/containers/games/overwatch/board";
 import { OverwatchHeroesTab } from "@/app/containers/games/overwatch/catalogs";
 import { OverwatchCareerSearchPage } from "@/app/containers/games/overwatch/history";
 
@@ -45,7 +46,7 @@ export default async function GameCategoryPage({
     firstQuery(searchParams.detail),
   );
 
-  const lolDetailContent =
+  const detailContent =
     params.slug === "lol" && activeDetailId === "champions" ? (
       <LolChampionsTab />
     ) : params.slug === "lol" && activeDetailId === "free-board" ? (
@@ -58,6 +59,8 @@ export default async function GameCategoryPage({
       <OverwatchCareerSearchPage />
     ) : params.slug === "overwatch" && activeDetailId === "heroes" ? (
       <OverwatchHeroesTab />
+    ) : params.slug === "overwatch" && activeDetailId === "free-board" ? (
+      <OverwatchFreeBoardPage />
     ) : params.slug === "pokemon" && activeDetailId === "pokedex" ? (
       <PokemonPokedexPage />
     ) : params.slug === "pokemon" && activeDetailId === "ability" ? (
@@ -72,7 +75,7 @@ export default async function GameCategoryPage({
       gameSlug={params.slug}
       activeDetailId={activeDetailId}
     >
-      {lolDetailContent}
+      {detailContent}
     </GamePageLayout>
   );
 }
